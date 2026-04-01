@@ -1,0 +1,17 @@
+services:
+  subsage:
+    build: .
+    image: subsage:latest
+    container_name: subsage
+    restart: unless-stopped
+    ports:
+      - "8321:8321"
+    volumes:
+      - subsage-data:/data
+    # environment:
+    #   SAGE_JWT_SECRET: change-me-to-a-random-string  # Optional: fixed JWT secret
+    #   TZ: America/New_York                           # Optional: timezone (default: UTC)
+
+volumes:
+  subsage-data:
+    driver: local

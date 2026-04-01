@@ -1,0 +1,16 @@
+{
+  "name": "Sage",
+  "short_name": "Sage",
+  "description": "个人订阅管理工具",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#3D7C5F",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

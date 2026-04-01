@@ -1,0 +1,31 @@
+# Binaries
+sage-server
+*.exe
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+frontend/dist/
+
+# Database
+*.db
+data/
+
+# Static assets (embedded in Go binary at build time)
+backend/static/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local

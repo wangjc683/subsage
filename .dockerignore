@@ -1,0 +1,39 @@
+# Build artifacts
+backend/static/
+frontend/dist/
+sage-server
+*.exe
+
+# Dependencies
+node_modules/
+vendor/
+
+# Database
+*.db
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Dev files
+devlog/
+*.md
+!README.md
+
+# Env
+.env
+.env.local
+
+# Gemini
+.gemini/
