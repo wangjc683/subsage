@@ -2,6 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { getCategoryIcon, getCategoryName, theme } from '../stores/index.js';
   import { t } from '../i18n/index.js';
+  import { Chart, registerables } from 'chart.js';
+  Chart.register(...registerables);
 
   // Need a getter for t inside chart callbacks
   let tFunc;
@@ -105,7 +107,7 @@
               order: 2
             },
             {
-              label: 'Average',
+              label: tFunc('chart.average'),
               data: trendData.map(() => avg),
               type: 'line',
               borderColor: '#FFB020',

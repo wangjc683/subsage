@@ -7,7 +7,7 @@ export default {
   'nav.agent': 'Agent',
   'nav.follow_system': 'Follow System',
   'nav.logout': 'Logout',
-  'nav.version': 'v0.0.1',
+  'nav.version': 'v0.1.0',
 
   // --- Login ---
   'login.tagline': 'AI Agent-Native Subscription Management',
@@ -170,7 +170,7 @@ export default {
   'agent.key_regen_confirm': 'Confirm',
   'agent.key_regen_cancel': 'Cancel',
   'agent.connect_url': 'Connect URL',
-  'agent.recent_activity': 'Recent Activity',
+  'agent.recent_activity': 'Agent Recent Activity',
   'agent.activity_today': 'Today {today} · Total {total}',
   'agent.api_docs': 'API Endpoint Docs',
   'agent.install_text': 'Install SubSage official Skill from {url}/api/agent/skill.md',
@@ -237,4 +237,12 @@ export default {
   'chart.monthly_trend': 'Monthly Spending Trend',
   'chart.category_dist': 'Category Distribution',
   'chart.amount': 'Amount',
+  'chart.average': 'Average',
+
+  // --- Batch ---
+  'subs.batch': 'Batch',
+  'subs.batch_cancel': 'Cancel',
+
+  // --- Units ---
+  'overview.per_day': '/d',
 };

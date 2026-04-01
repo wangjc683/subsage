@@ -7,7 +7,7 @@ export default {
   'nav.agent': 'Agent',
   'nav.follow_system': '跟随系统',
   'nav.logout': '退出',
-  'nav.version': 'v0.0.1',
+  'nav.version': 'v0.1.0',
 
   // --- Login ---
   'login.tagline': 'AI Agent 原生的订阅管理',
@@ -170,7 +170,7 @@ export default {
   'agent.key_regen_confirm': '确定',
   'agent.key_regen_cancel': '取消',
   'agent.connect_url': '连接地址',
-  'agent.recent_activity': '最近活动',
+  'agent.recent_activity': 'Agent 最近活动',
   'agent.activity_today': '今日 {today} 次 · 累计 {total} 次',
   'agent.api_docs': 'API 端点文档',
   'agent.install_text': '根据 {url}/api/agent/skill.md 安装 SubSage 官方Skill',
@@ -237,4 +237,12 @@ export default {
   'chart.monthly_trend': '月度支出趋势',
   'chart.category_dist': '分类分布',
   'chart.amount': '金额',
+  'chart.average': '平均值',
+
+  // --- Batch ---
+  'subs.batch': '批量',
+  'subs.batch_cancel': '取消',
+
+  // --- Units ---
+  'overview.per_day': '/天',
 };

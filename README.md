@@ -114,6 +114,42 @@ docker restart subsage
 
 ---
 
+## 🔄 Upgrade
+
+### Standard Upgrade
+
+SubSage stores all data in a SQLite database mounted as a Docker volume. Upgrading is safe:
+
+```bash
+# 1. Backup (recommended)
+docker cp subsage:/data/sage.db ./sage-backup-$(date +%Y%m%d).db
+
+# 2. Pull & restart
+cd subsage
+git pull
+docker compose down
+docker compose up -d --build
+```
+
+Your data, settings, and API tokens are preserved automatically.
+
+### Agent-Assisted Upgrade
+
+SubSage is Agent-native — even upgrades can be a conversation. Send this to your Agent:
+
+> Check the current version of my SubSage instance at http://localhost:8321/api/agent/stats (use X-API-Token header). Then check the latest release at https://github.com/wangjc683/subsage/releases. If there's a newer version, show me the changelog and ask if I want to upgrade. If I confirm, run `cd ~/subsage && git pull && docker compose down && docker compose up -d --build`, then verify the new version.
+
+### Version History
+
+See the full changelog at [GitHub Releases](https://github.com/wangjc683/subsage/releases).
+
+| Version | Highlights |
+|---------|-----------|
+| v0.1.0 | Shared edit modal, Calendar UX overhaul, Chart.js fix, i18n polish |
+| v0.0.1 | Initial release — full CRUD, Agent API, multi-currency, i18n |
+
+---
+
 ## 🤖 Connecting Your Agent
 
 1. Open SubSage → **Agent** in the sidebar

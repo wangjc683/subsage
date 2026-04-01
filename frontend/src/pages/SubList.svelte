@@ -1,8 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { subs, categories, getCategoryIcon, getCategoryName, getCategoryColor, getCycleName, formatPrice, daysUntil, cycleIds, toasts } from '../stores/index.js';
+  import { subs, settings, categories, getCategoryIcon, getCategoryName, getCategoryColor, getCycleName, formatPrice, daysUntil, cycleIds, toasts } from '../stores/index.js';
   import { t } from '../i18n/index.js';
-  import { createSub, updateSub, deleteSub } from '../api/index.js';
+  import { updateSub, deleteSub } from '../api/index.js';
+  import EditSubModal from '../components/EditSubModal.svelte';
 
   let filterCategory = '';
   let filterStatus = '';
@@ -14,18 +15,8 @@
   let expandedId = null;
   let selectedIds = new Set();
   let batchMode = false;
-  let deletingSub = null; // For delete confirmation modal
-  let customCategoryInput = '';
   let showAllCategories = false;
 
-  // Editor form state
-  let form = {
-    name: '', category: 'ai', status: 'active', price: '', original_price: '', discount_note: '', currency: 'USD',
-    cycle: 'monthly', payment_method: '', start_date: '', next_renewal: '',
-    url: '', notes: '', remind_days: 3,
-  };
-  let formError = '';
-  let formLoading = false;
 
   $: filteredSubs = ($subs || []).filter(s => {
     if (filterCategory && s.category !== filterCategory) return false;
@@ -47,7 +38,7 @@
       .map(([id, count]) => ({ id, count, name: getCategoryName(id), icon: getCategoryIcon(id) }));
   })();
 
-  $: isCustomCategory = form.category === '__custom__';
+
 
   function renewalBadge(d) {
     if (d === null) return null;
@@ -140,61 +131,22 @@
 
   function openCreate() {
     editingSub = null;
-    form = {
-      name: '', category: 'ai', status: 'active', price: '', original_price: '', discount_note: '', currency: 'USD',
-      cycle: 'monthly', payment_method: '', start_date: '', next_renewal: '',
-      url: '', notes: '', remind_days: 3,
-    };
-    formError = '';
     showEditor = true;
   }
 
   function openEdit(sub) {
     editingSub = sub;
-    form = {
-      name: sub.name, category: sub.category, status: sub.status,
-      price: String(sub.price), original_price: sub.original_price ? String(sub.original_price) : '', discount_note: sub.discount_note || '',
-      currency: sub.currency || 'USD',
-      cycle: sub.cycle, payment_method: sub.payment_method || '',
-      start_date: sub.start_date || '', next_renewal: sub.next_renewal || '',
-      url: sub.url || '', notes: sub.notes || '',
-      remind_days: sub.remind_days || 3,
-    };
-    formError = '';
     showEditor = true;
   }
 
-  async function handleSave() {
-    if (!form.name || !form.price) { formError = 'Name and price required'; return; }
-    if (form.category === '__custom__' && !customCategoryInput.trim()) { formError = 'Enter custom category'; return; }
-    formLoading = true; formError = '';
-    try {
-      const resolvedCategory = form.category === '__custom__' ? customCategoryInput.trim() : form.category;
-      const data = {
-        ...form,
-        category: resolvedCategory,
-        price: parseFloat(form.price),
-        original_price: form.original_price ? parseFloat(form.original_price) : null,
-        remind_days: parseInt(form.remind_days) || 3,
-      };
-      if (editingSub) await updateSub(editingSub.id, data);
-      else await createSub(data);
-      showEditor = false; refresh();
-      toasts.success(editingSub ? 'Updated' : 'Added');
-    } catch (e) { formError = e.message; }
-    finally { formLoading = false; }
+  function onModalSaved() {
+    showEditor = false;
+    refresh();
   }
 
-  function handleDelete(sub) {
-    deletingSub = sub;
-  }
-
-  async function confirmDelete() {
-    if (!deletingSub) return;
-    const sub = deletingSub;
-    deletingSub = null;
-    try { await deleteSub(sub.id); refresh(); toasts.success('Deleted'); }
-    catch (e) { toasts.error('Delete failed: ' + e.message); }
+  function onModalDeleted() {
+    showEditor = false;
+    refresh();
   }
 
   function statusLabel(s) { return { active: $t('status.active'), paused: $t('status.paused'), cancelled: $t('status.cancelled') }[s] || s; }
@@ -214,12 +166,12 @@
     </div>
     <div class="header-actions">
       {#if !batchMode}
-        <button class="btn-batch" on:click={toggleBatchMode} title="Batch">
+        <button class="btn-batch" on:click={toggleBatchMode} title={$t('subs.batch')}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Batch
+          {$t('subs.batch')}
         </button>
       {:else}
-        <button class="btn-batch active" on:click={toggleBatchMode}>Cancel</button>
+        <button class="btn-batch active" on:click={toggleBatchMode}>{$t('subs.batch_cancel')}</button>
       {/if}
       <button class="btn-add" on:click={openCreate}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -360,7 +312,7 @@
                   {/if}
                   <span class="sub-actions">
                     <button class="btn-icon" on:click|stopPropagation={() => openEdit(sub)} title="Edit"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                    <button class="btn-icon btn-delete" on:click|stopPropagation={() => handleDelete(sub)} title="Delete"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    <button class="btn-icon btn-delete" on:click|stopPropagation={() => openEdit(sub)} title="Delete"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                   </span>
                 </div>
               </div>
@@ -439,93 +391,7 @@
 </div>
 
 <!-- Editor Modal -->
-{#if showEditor}
-  <div class="modal-overlay" on:click|self={() => showEditor = false} on:keydown={(e) => { if (e.key === 'Escape') showEditor = false; }}>
-    <div class="modal animate-scale-in" on:keydown={(e) => { if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); handleSave(); } }}>
-      <div class="modal-header">
-        <h2>{editingSub ? $t('subs.edit') : $t('subs.add')}</h2>
-        <button class="btn-close" on:click={() => showEditor = false}>✕</button>
-      </div>
-      <div class="modal-body">
-        {#if formError}<div class="form-error">{formError}</div>{/if}
-
-        <div class="form-section">
-          <div class="form-section-label">{$t('subs.name')}</div>
-          <div class="form-row">
-            <div class="form-group flex-1"><label>{$t('subs.name')} *</label><input type="text" bind:value={form.name} placeholder={$t('subs.name_placeholder')} /></div>
-            <div class="form-group form-auto">
-              <label>{$t('subs.category')}</label>
-              <select bind:value={form.category} on:change={() => { if (form.category !== '__custom__') customCategoryInput = ''; }}>
-                {#each categories as cat}<option value={cat.id}>{cat.icon} {getCategoryName(cat.id, $t)}</option>{/each}
-                <option disabled>──────</option>
-                <option value="__custom__">✏️ Custom...</option>
-              </select>
-            </div>
-          </div>
-          {#if isCustomCategory}
-            <div class="form-group animate-fade-in">
-              <label>Custom Category</label>
-              <input type="text" bind:value={customCategoryInput} placeholder="e.g., Fitness, Insurance" />
-            </div>
-          {/if}
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-label">{$t('subs.price')}</div>
-          <div class="form-row">
-            <div class="form-group form-price"><label>{$t('subs.price')} *</label><input type="number" step="0.01" bind:value={form.price} placeholder="0.00" /></div>
-            <div class="form-group form-auto"><label>{$t('subs.currency')}</label><select bind:value={form.currency}>{#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}<option value={cur}>{cur}</option>{/each}</select></div>
-            <div class="form-group form-auto"><label>{$t('subs.cycle')}</label><select bind:value={form.cycle}>{#each cycleIds as cid}<option value={cid}>{$t(`cycle.${cid}`)}</option>{/each}</select></div>
-            <div class="form-group form-price"><label>{$t('subs.original_price')}</label><input type="number" step="0.01" bind:value={form.original_price} placeholder="" /></div>
-          </div>
-          {#if form.original_price}
-            <div class="form-group"><label>{$t('subs.discount_note')}</label><input type="text" bind:value={form.discount_note} placeholder={$t('subs.discount_note_placeholder')} /></div>
-          {/if}
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-label">{$t('subs.status')}</div>
-          <div class="form-row">
-            <div class="form-group form-auto"><label>{$t('subs.status')}</label><select bind:value={form.status}><option value="active">{$t('status.active')}</option><option value="paused">{$t('status.paused')}</option><option value="cancelled">{$t('status.cancelled')}</option></select></div>
-            <div class="form-group flex-1"><label>{$t('subs.payment_method')}</label><input type="text" bind:value={form.payment_method} placeholder={$t('subs.payment_method_placeholder')} /></div>
-            <div class="form-group form-auto"><label>Remind</label><select bind:value={form.remind_days}><option value={1}>1d before</option><option value={3}>3d before</option><option value={7}>7d before</option></select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group flex-1"><label>{$t('subs.start_date')}</label><input type="date" bind:value={form.start_date} /></div>
-            <div class="form-group flex-1"><label>{$t('subs.next_renewal')}</label><input type="date" bind:value={form.next_renewal} /></div>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-label">{$t('subs.notes')}</div>
-          <div class="form-group"><label>{$t('subs.url')}</label><input type="url" bind:value={form.url} placeholder={$t('subs.url_placeholder')} /></div>
-          <div class="form-group"><label>{$t('subs.notes')}</label><textarea bind:value={form.notes} rows="2" placeholder={$t('subs.notes_placeholder')}></textarea></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" on:click={() => showEditor = false}>{$t('subs.cancel')}</button>
-        <button class="btn-primary" on:click={handleSave} disabled={formLoading}>{formLoading ? $t('subs.saving') : $t('subs.save')}</button>
-      </div>
-    </div>
-  </div>
-{/if}
-
-<!-- Delete Confirmation Modal -->
-{#if deletingSub}
-  <div class="modal-overlay" on:click|self={() => deletingSub = null} on:keydown={(e) => { if (e.key === 'Escape') deletingSub = null; }} role="dialog" aria-modal="true">
-    <div class="modal delete-modal animate-scale-in">
-      <div class="delete-modal-content">
-        <div class="delete-modal-icon">🗑️</div>
-        <h3 class="delete-modal-title">{$t('subs.delete_confirm')}</h3>
-        <p class="delete-modal-desc">Delete "<strong>{deletingSub.name}</strong>"? This cannot be undone.</p>
-      </div>
-      <div class="delete-modal-actions">
-        <button class="btn-secondary" on:click={() => deletingSub = null}>{$t('subs.cancel')}</button>
-        <button class="btn-danger" on:click={confirmDelete}>{$t('common.delete')}</button>
-      </div>
-    </div>
-  </div>
-{/if}
+<EditSubModal bind:show={showEditor} sub={editingSub} on:saved={onModalSaved} on:deleted={onModalDeleted} on:close={() => showEditor = false} />
 
 <style>
   .subs-page { padding: 32px 0; }
@@ -793,99 +659,9 @@
     display: flex; flex-direction: column; overflow: hidden;
     box-shadow: var(--shadow-lg);
   }
-  .modal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 24px; border-bottom: 1px solid var(--border);
-  }
-  .modal-header h2 { font-size: 17px; font-weight: 600; }
-  .btn-close {
-    padding: 4px 8px; font-size: 18px; color: var(--text-secondary);
-    border-radius: var(--radius-sm); transition: all var(--transition);
-  }
-  .btn-close:hover { background: var(--hover); }
-  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
-  .form-error {
-    background: rgba(237, 63, 63, 0.1); color: var(--error); padding: 10px 14px;
-    border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px;
-    border-left: 3px solid var(--error);
-  }
-  .form-row { display: flex; gap: 12px; margin-bottom: 0; }
-  .form-group { margin-bottom: 14px; }
-  .flex-1 { flex: 1; }
-  .form-auto { flex: 0 0 auto; }
-  .form-price { flex: 0 0 130px; }
-  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; }
-  .label-hint { font-weight: 400; color: var(--text-tertiary); }
-  .form-group input, .form-group select, .form-group textarea {
-    width: 100%; padding: 9px 12px; background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px;
-    transition: all var(--transition);
-  }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-glow);
-  }
-  .form-group textarea { resize: vertical; }
-
-  /* Form sections */
-  .form-section {
-    margin-bottom: 6px;
-    padding-bottom: 4px;
-  }
-  .form-section:not(:last-child) {
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 10px;
-    margin-bottom: 14px;
-  }
-  .form-section-label {
-    font-size: 11px; font-weight: 600; color: var(--text-tertiary);
-    text-transform: uppercase; letter-spacing: 0.8px;
-    margin-bottom: 10px;
-  }
-  .modal-footer {
-    display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px;
-    border-top: 1px solid var(--border);
-  }
-  .btn-secondary {
-    padding: 8px 18px; background: var(--card); color: var(--text-primary);
-    border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px;
-    transition: all var(--transition);
-  }
-  .btn-secondary:hover { background: var(--hover); }
-  .btn-secondary:active { transform: scale(0.97); }
-  .btn-primary {
-    padding: 8px 18px; background: var(--primary); color: white; border-radius: var(--radius-sm);
-    font-size: 14px; font-weight: 500; transition: all var(--transition);
-  }
-  .btn-primary:hover:not(:disabled) { background: var(--primary-light); }
-  .btn-primary:active:not(:disabled) { transform: scale(0.97); }
-  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
   @media (max-width: 768px) {
-    .modal-body { padding: 16px; }
-    .form-row { gap: 10px; flex-wrap: wrap; }
     .sub-actions { opacity: 1 !important; }
     .pill-filters { padding-bottom: 8px; }
   }
-
-  /* Delete Confirmation Modal */
-  .delete-modal {
-    max-width: 400px; padding: 28px 24px 20px;
-  }
-  .delete-modal-content {
-    text-align: center; margin-bottom: 24px;
-  }
-  .delete-modal-icon { font-size: 36px; margin-bottom: 12px; }
-  .delete-modal-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
-  .delete-modal-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
-  .delete-modal-desc strong { color: var(--text-primary); font-weight: 600; }
-  .delete-modal-actions {
-    display: flex; gap: 10px; justify-content: center;
-  }
-  .delete-modal-actions button { flex: 1; padding: 10px 16px; font-size: 14px; font-weight: 500; border-radius: var(--radius-sm); transition: all var(--transition); }
-  .btn-danger {
-    background: var(--error); color: white; border: none;
-  }
-  .btn-danger:hover { filter: brightness(1.1); }
-  .btn-danger:active { transform: scale(0.97); }
 </style>

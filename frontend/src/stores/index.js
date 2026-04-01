@@ -138,7 +138,7 @@ export const subs = createSubsStore();
 // --- Settings Store ---
 function createSettingsStore() {
   const { subscribe, set, update } = writable({
-    base_currency: 'CNY',
+    base_currency: 'USD',
     theme: 'dark',
   });
 

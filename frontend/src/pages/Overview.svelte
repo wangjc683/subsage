@@ -4,6 +4,7 @@
   import { subs, formatPrice, getCategoryIcon, getCategoryName, getCategoryColor, daysUntil, settings } from '../stores/index.js';
   import { t, locale } from '../i18n/index.js';
   import Charts from '../components/Charts.svelte';
+  import EditSubModal from '../components/EditSubModal.svelte';
 
   let overview = null;
   let categoryData = [];
@@ -11,6 +12,10 @@
   let loading = true;
   let chartsComponent;
   let agentStatus = null;
+
+  // Edit modal state
+  let showEditor = false;
+  let editingSub = null;
 
   settings.fetch();
 
@@ -72,6 +77,21 @@
     return $t('common.day_ago', { day: Math.floor(hours / 24) });
   }
 
+  function openEditSub(sub) {
+    editingSub = sub;
+    showEditor = true;
+  }
+
+  function onModalSaved() {
+    showEditor = false;
+    loadData();
+  }
+
+  function onModalDeleted() {
+    showEditor = false;
+    loadData();
+  }
+
 
 
   async function loadData() {
@@ -83,7 +103,7 @@
         getMonthlyTrend()
       ]);
       overview = ov;
-      categoryData = cats || [];
+      categoryData = (cats || []).sort((a, b) => b.monthly_total - a.monthly_total);
       trendData = trend || [];
       // Load agent status separately (non-blocking)
       getAgentStatus().then(s => agentStatus = s).catch(() => {});
@@ -183,7 +203,7 @@
               {@const d = sub._days}
               {@const tag = getRenewalTag(d)}
               {@const catColor = getCategoryColor(sub.category)}
-              <div class="upcoming-item">
+              <button class="upcoming-item" on:click={() => openEditSub(sub)}>
                 <div class="upcoming-icon" style="background: {catColor.bg}; color: {catColor.text}">
                   {getCategoryIcon(sub.category)}
                 </div>
@@ -192,7 +212,7 @@
                   <div class="upcoming-meta tabular-nums">{formatPrice(sub.price, sub.currency)}</div>
                 </div>
                 <div class="renewal-tag {tag.cls}">{tag.text}</div>
-              </div>
+              </button>
             {/each}
           </div>
           <button class="btn-see-all" on:click={() => window.location.hash = '#/calendar'}>
@@ -229,7 +249,10 @@
               <div class="cat-bar-track">
                 <div class="cat-bar-fill" style="width: {pct}%; background: {catColor.text}"></div>
               </div>
-              <div class="cat-bar-value tabular-nums">{formatPrice(cat.monthly_total, overview.base_currency)}{$t('overview.per_month')}</div>
+              <div class="cat-bar-value tabular-nums">
+                <span class="cat-val-main">{formatPrice(cat.monthly_total, overview.base_currency)}{$t('overview.per_month')}</span>
+                <span class="cat-val-sub">{formatPrice(cat.monthly_total * 12, overview.base_currency)}{$t('subs.per_year')} · {formatPrice(cat.monthly_total / 30, overview.base_currency)}{$t('overview.per_day')}</span>
+              </div>
             </div>
           {/each}
         </div>
@@ -263,6 +286,9 @@
     </div>
   {/if}
 </div>
+
+<!-- Shared Edit Modal -->
+<EditSubModal bind:show={showEditor} sub={editingSub} on:saved={onModalSaved} on:deleted={onModalDeleted} on:close={() => showEditor = false} />
 
 <style>
   .overview-page { padding: 32px 36px; max-width: 1200px; }
@@ -365,8 +391,11 @@
   .upcoming-item {
     display: flex; align-items: center; gap: 12px; padding: 10px 12px;
     border-radius: var(--radius-sm); transition: all var(--transition);
+    cursor: pointer; border: 1px solid transparent;
+    background: none; width: 100%; text-align: left;
+    font-family: inherit; color: inherit;
   }
-  .upcoming-item:hover { background: var(--hover); }
+  .upcoming-item:hover { background: var(--hover); border-color: var(--primary); }
   .upcoming-icon {
     font-size: 16px; width: 32px; height: 32px;
     display: flex; align-items: center; justify-content: center;
@@ -419,9 +448,12 @@
     opacity: 0.7;
   }
   .cat-bar-value {
-    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
     text-align: right; white-space: nowrap;
+    display: flex; flex-direction: column; gap: 1px;
   }
+  .cat-val-main { font-size: 13px; font-weight: 600; }
+  .cat-val-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
 
   /* Currency */
   .currency-grid {

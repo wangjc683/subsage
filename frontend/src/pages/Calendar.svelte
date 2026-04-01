@@ -2,56 +2,69 @@
   import { onMount } from 'svelte';
   import { subs, getCategoryIcon, daysUntil, formatPrice, settings } from '../stores/index.js';
   import { t, locale } from '../i18n/index.js';
+  import EditSubModal from '../components/EditSubModal.svelte';
 
   let currentDate = new Date();
   let year = currentDate.getFullYear();
   let month = currentDate.getMonth();
   let selectedDay = null;
 
+  // Edit modal state
+  let showEditor = false;
+  let editingSub = null;
+
   settings.fetch();
 
-  $: weekdays = $t('calendar.weekdays');
+  // Sunday-first weekday headers
+  $: weekdays = (() => {
+    const wd = $t('calendar.weekdays'); // [Mon, Tue, ..., Sun]
+    // Rotate to Sunday first: move last element to front
+    return [wd[6], ...wd.slice(0, 6)];
+  })();
 
-  $: firstDay = new Date(year, month, 1).getDay();
   $: daysInMonth = new Date(year, month + 1, 0).getDate();
-  $: adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
+  // Sunday = 0 for getDay(), perfect for Sunday-first layout
+  $: firstDayOffset = new Date(year, month, 1).getDay();
   $: monthLabel = new Date(year, month).toLocaleDateString($locale === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long' });
 
-  // Group subs by next_renewal date
-  $: subsByDay = {};
+  // Group subs by next_renewal date (key = "YYYY-MM-DD")
+  $: subsByKey = {};
   $: renewalSubs = ($subs || []).filter(s => s.status === 'active' && s.next_renewal);
 
   $: {
-    subsByDay = {};
+    subsByKey = {};
     renewalSubs.forEach(s => {
       const d = new Date(s.next_renewal);
-      if (d.getFullYear() === year && d.getMonth() === month) {
-        const day = d.getDate();
-        if (!subsByDay[day]) subsByDay[day] = [];
-        subsByDay[day].push(s);
-      }
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!subsByKey[key]) subsByKey[key] = [];
+      subsByKey[key].push(s);
     });
   }
 
-  // Monthly summary
-  $: monthlyTotal = Object.values(subsByDay).reduce((sum, subs) => sum + subs.length, 0);
-  $: monthlyAmount = Object.values(subsByDay).reduce((sum, daySubs) =>
-    sum + daySubs.reduce((s, sub) => s + sub.price, 0), 0);
-  $: baseCurrency = $settings?.base_currency || 'CNY';
+  function getSubsForDate(y, m, d) {
+    return subsByKey[`${y}-${m}-${d}`] || [];
+  }
+
+  // Monthly summary (current month only)
+  $: currentMonthSubs = renewalSubs.filter(s => {
+    const d = new Date(s.next_renewal);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+  $: monthlyTotal = currentMonthSubs.length;
+  $: monthlyAmount = currentMonthSubs.reduce((s, sub) => s + sub.price, 0);
+  $: baseCurrency = $settings?.base_currency || 'USD';
 
   $: today = new Date();
   $: isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
   $: todayDate = today.getDate();
 
   function prevMonth() {
-    if (month === 0) { year--; month = 11; }
-    else { month--; }
+    if (month === 0) { year--; month = 11; } else { month--; }
     selectedDay = null;
   }
 
   function nextMonth() {
-    if (month === 11) { year++; month = 0; }
-    else { month++; }
+    if (month === 11) { year++; month = 0; } else { month++; }
     selectedDay = null;
   }
 
@@ -62,31 +75,71 @@
   }
 
   function selectDay(day) {
-    if (subsByDay[day] && subsByDay[day].length > 0) {
+    const subs = getSubsForDate(year, month, day);
+    if (subs.length > 0) {
       selectedDay = selectedDay === day ? null : day;
     }
   }
 
-  // Build calendar grid
+  // Build calendar grid with overflow days
   $: calendarCells = [];
   $: {
     calendarCells = [];
-    for (let i = 0; i < adjustedFirstDay; i++) {
-      calendarCells.push({ day: 0 });
+
+    // Previous month overflow
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    for (let i = firstDayOffset - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      const pm = month === 0 ? 11 : month - 1;
+      const py = month === 0 ? year - 1 : year;
+      calendarCells.push({ day: d, dimmed: true, subs: getSubsForDate(py, pm, d), isToday: false });
     }
+
+    // Current month
     for (let d = 1; d <= daysInMonth; d++) {
       calendarCells.push({
         day: d,
-        subs: subsByDay[d] || [],
+        dimmed: false,
+        subs: getSubsForDate(year, month, d),
         isToday: isCurrentMonth && d === todayDate,
       });
+    }
+
+    // Next month overflow - fill to complete last row
+    const remaining = 7 - (calendarCells.length % 7);
+    if (remaining < 7) {
+      const nm = month === 11 ? 0 : month + 1;
+      const ny = month === 11 ? year + 1 : year;
+      for (let d = 1; d <= remaining; d++) {
+        calendarCells.push({ day: d, dimmed: true, subs: getSubsForDate(ny, nm, d), isToday: false });
+      }
     }
   }
 
   // For mobile list view: days with subs this month
-  $: daysWithSubs = Object.entries(subsByDay)
-    .map(([day, subs]) => ({ day: parseInt(day), subs }))
-    .sort((a, b) => a.day - b.day);
+  $: daysWithSubs = (() => {
+    const result = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const s = getSubsForDate(year, month, d);
+      if (s.length > 0) result.push({ day: d, subs: s });
+    }
+    return result;
+  })();
+
+  function openEditSub(sub) {
+    editingSub = sub;
+    showEditor = true;
+  }
+
+  function onModalSaved() {
+    showEditor = false;
+    subs.fetch();
+  }
+
+  function onModalDeleted() {
+    showEditor = false;
+    subs.fetch();
+  }
 
   onMount(() => { subs.fetch(); });
 </script>
@@ -121,28 +174,27 @@
     {#each calendarCells as cell}
       <button
         class="day-cell"
-        class:empty={cell.day === 0}
+        class:dimmed={cell.dimmed}
         class:is-today={cell.isToday}
         class:has-subs={cell.subs && cell.subs.length > 0}
-        class:selected={selectedDay === cell.day}
-        on:click={() => cell.day > 0 && selectDay(cell.day)}
-        disabled={cell.day === 0}
-        aria-label={cell.day > 0 ? `Day ${cell.day}${cell.subs?.length ? `, ${cell.subs.length} renewals` : ''}` : ''}
+        class:selected={!cell.dimmed && selectedDay === cell.day}
+        on:click={() => !cell.dimmed && selectDay(cell.day)}
+        aria-label={`Day ${cell.day}${cell.subs?.length ? `, ${cell.subs.length} renewals` : ''}`}
       >
-        {#if cell.day > 0}
-          <span class="day-num" class:today={cell.isToday}>{cell.day}</span>
-          {#if cell.subs.length > 0}
-            <div class="day-subs">
-              {#each cell.subs.slice(0, 2) as sub}
-                <div class="day-sub" title="{sub.name}">
-                  <span class="day-sub-icon">{getCategoryIcon(sub.category)}</span>
-                  <span class="day-sub-name">{sub.name}</span>
-                </div>
-              {/each}
-              {#if cell.subs.length > 2}
-                <div class="day-more">+{cell.subs.length - 2}</div>
-              {/if}
-            </div>
+        <span class="day-num" class:today={cell.isToday} class:dim-text={cell.dimmed}>{cell.day}</span>
+        {#if cell.subs.length > 0}
+          <div class="day-subs">
+            {#each cell.subs.slice(0, 2) as sub}
+              <div class="day-sub" class:dim-sub={cell.dimmed} title="{sub.name}">
+                <span class="day-sub-icon">{getCategoryIcon(sub.category)}</span>
+                <span class="day-sub-name">{sub.name}</span>
+              </div>
+            {/each}
+            {#if cell.subs.length > 2}
+              <div class="day-more">+{cell.subs.length - 2}</div>
+            {/if}
+          </div>
+          {#if !cell.dimmed}
             <div class="day-bar"></div>
           {/if}
         {/if}
@@ -151,22 +203,25 @@
   </div>
 
   <!-- Day Detail Popover -->
-  {#if selectedDay && subsByDay[selectedDay]}
+  {#if selectedDay && getSubsForDate(year, month, selectedDay).length > 0}
     <div class="day-popover animate-fade-in">
       <div class="popover-header">
         <span class="popover-date">{new Date(year, month, selectedDay).toLocaleDateString($locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' })}</span>
-        <span class="popover-count">{subsByDay[selectedDay].length}</span>
+        <span class="popover-count">{getSubsForDate(year, month, selectedDay).length}</span>
         <button class="popover-close" on:click={() => selectedDay = null} aria-label="Close">✕</button>
       </div>
       <div class="popover-list">
-        {#each subsByDay[selectedDay] as sub}
-          <div class="popover-item">
+        {#each getSubsForDate(year, month, selectedDay) as sub}
+          <button class="popover-item" on:click={() => openEditSub(sub)}>
             <span class="popover-icon">{getCategoryIcon(sub.category)}</span>
             <div class="popover-info">
               <div class="popover-name">{sub.name}</div>
               <div class="popover-meta tabular-nums">{formatPrice(sub.price, sub.currency)}</div>
             </div>
-          </div>
+            <span class="popover-edit-hint">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </span>
+          </button>
         {/each}
       </div>
     </div>
@@ -186,19 +241,22 @@
             <span class="mobile-day-count">{daySubs.length} renewal(s)</span>
           </div>
           {#each daySubs as sub}
-            <div class="mobile-day-item">
+            <button class="mobile-day-item" on:click={() => openEditSub(sub)}>
               <span class="mobile-item-icon">{getCategoryIcon(sub.category)}</span>
               <div class="mobile-item-info">
                 <span class="mobile-item-name">{sub.name}</span>
                 <span class="mobile-item-price tabular-nums">{formatPrice(sub.price, sub.currency)}</span>
               </div>
-            </div>
+            </button>
           {/each}
         </div>
       {/each}
     {/if}
   </div>
 </div>
+
+<!-- Shared Edit Modal -->
+<EditSubModal bind:show={showEditor} sub={editingSub} on:saved={onModalSaved} on:deleted={onModalDeleted} on:close={() => showEditor = false} />
 
 <style>
   .calendar-page { padding: 32px 0; }
@@ -247,7 +305,7 @@
     position: relative; width: 100%; font-family: inherit;
     color: var(--text-primary);
   }
-  .day-cell.empty { background: var(--card); }
+  .day-cell.dimmed { background: var(--card); }
   .day-cell.is-today { background: var(--primary-faint); }
   .day-cell.has-subs { cursor: pointer; }
   .day-cell.has-subs:hover { background: var(--hover); }
@@ -262,6 +320,7 @@
     background: var(--primary); color: white; font-weight: 700;
     box-shadow: 0 2px 8px var(--primary-glow);
   }
+  .day-num.dim-text { color: var(--text-tertiary); }
 
   .day-subs { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 
@@ -270,6 +329,7 @@
     background: var(--primary-tint); border-radius: 4px; font-size: 11px;
     overflow: hidden; white-space: nowrap;
   }
+  .day-sub.dim-sub { opacity: 0.5; }
   .day-sub-icon { font-size: 10px; flex-shrink: 0; }
   .day-sub-name { overflow: hidden; text-overflow: ellipsis; }
   .day-more { font-size: 10px; color: var(--text-tertiary); padding: 0 4px; }
@@ -278,7 +338,6 @@
   .day-bar {
     position: absolute; bottom: 0; left: 0; right: 0;
     height: 3px; background: var(--primary); opacity: 0.5;
-    border-radius: 0 0 0 0;
   }
 
   /* Popover */
@@ -307,12 +366,23 @@
     display: flex; align-items: center; gap: 12px;
     padding: 10px 12px; background: var(--card); border-radius: var(--radius-sm);
     transition: all var(--transition);
+    cursor: pointer; border: 1px solid transparent;
+    width: 100%; text-align: left; font-family: inherit; color: inherit;
   }
-  .popover-item:hover { background: var(--hover); }
+  .popover-item:hover {
+    background: var(--hover);
+    border-color: var(--primary);
+  }
   .popover-icon { font-size: 20px; }
   .popover-info { flex: 1; }
   .popover-name { font-size: 14px; font-weight: 500; }
   .popover-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+  .popover-edit-hint {
+    color: var(--text-tertiary); opacity: 0;
+    transition: all var(--transition);
+  }
+  .popover-item:hover .popover-edit-hint { opacity: 1; color: var(--primary); }
 
   /* Mobile list view - hidden on desktop */
   .mobile-calendar-list { display: none; }
@@ -345,7 +415,11 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       margin-bottom: 6px;
+      cursor: pointer; width: 100%; text-align: left;
+      font-family: inherit; color: inherit;
+      transition: all var(--transition);
     }
+    .mobile-day-item:hover { border-color: var(--primary); }
     .mobile-item-icon { font-size: 20px; }
     .mobile-item-info { flex: 1; display: flex; align-items: center; justify-content: space-between; }
     .mobile-item-name { font-size: 14px; font-weight: 500; }

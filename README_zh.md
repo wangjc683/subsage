@@ -114,6 +114,42 @@ docker restart subsage
 
 ---
 
+## 🔄 升级
+
+### 标准升级
+
+SubSage 的数据存储在 Docker 卷挂载的 SQLite 数据库中，升级不会丢失数据：
+
+```bash
+# 1. 备份（推荐）
+docker cp subsage:/data/sage.db ./sage-backup-$(date +%Y%m%d).db
+
+# 2. 拉取新版本并重启
+cd subsage
+git pull
+docker compose down
+docker compose up -d --build
+```
+
+数据、设置和 API Token 会自动保留。
+
+### 用 Agent 升级
+
+SubSage 是 Agent 原生的 —— 升级也可以是一段对话。把下面这段发给你的 Agent：
+
+> 检查我部署在 http://localhost:8321 的 SubSage 当前版本（调用 /api/agent/stats，使用 X-API-Token header 认证）。然后查询 https://github.com/wangjc683/subsage/releases 的最新版本。如果有新版本，告诉我更新内容，问我是否要升级。如果我确认，执行 `cd ~/subsage && git pull && docker compose down && docker compose up -d --build`，然后验证版本号已更新。
+
+### 版本历史
+
+完整更新日志见 [GitHub Releases](https://github.com/wangjc683/subsage/releases)。
+
+| 版本 | 亮点 |
+|------|------|
+| v0.1.0 | 共享编辑弹窗、日历 UX 重构、Chart.js 修复、i18n 完善 |
+| v0.0.1 | 首次发布 — 完整增删改查、Agent API、多币种、中英双语 |
+
+---
+
 ## 🤖 接入你的 Agent
 
 1. 打开 SubSage → 侧边栏点击 **Agent**

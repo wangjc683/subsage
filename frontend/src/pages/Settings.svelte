@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { t, locale, locales, setLocale } from '../i18n/index.js';
 
-  let baseCurrency = 'CNY';
+  let baseCurrency = 'USD';
   let saved = false;
   let saving = false;
   let importing = false;
@@ -14,8 +14,11 @@
   // Load settings on mount
   settings.fetch();
 
-  $: if ($settings && $settings.base_currency) {
+  let settingsLoaded = false;
+
+  $: if ($settings && $settings.base_currency && !settingsLoaded) {
     baseCurrency = $settings.base_currency;
+    settingsLoaded = true;
   }
 
   let rateInfo = null;
@@ -133,7 +136,7 @@
         <div class="setting-desc">{$t('settings.base_currency_desc')}</div>
       </div>
       <select bind:value={baseCurrency} class="setting-select">
-        {#each ['CNY', 'USD', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}
+        {#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}
           <option value={cur}>{cur}</option>
         {/each}
       </select>
@@ -241,7 +244,7 @@
     <div class="about-info">
       <div class="about-row">
         <span class="about-key">{$t('settings.version')}</span>
-        <span class="about-val">v0.0.1</span>
+        <span class="about-val">v0.1.0</span>
       </div>
       <div class="about-row">
         <span class="about-key">{$t('settings.tech_stack')}</span>

@@ -8,7 +8,6 @@
     { id: 'subs', icon: 'list', key: 'nav.subs' },
     { id: 'calendar', icon: 'calendar', key: 'nav.calendar' },
     { id: 'agent', icon: 'cpu', key: 'nav.agent' },
-    { id: 'settings', icon: 'settings', key: 'nav.settings' },
   ];
 
   let expanded = false;
@@ -102,6 +101,19 @@
   </div>
 
   <div class="sidebar-bottom">
+    <button
+      class="nav-item"
+      class:active={activePage === 'settings'}
+      on:click={() => navigate('settings')}
+      title={$t('nav.settings')}
+    >
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          {@html iconSvg('settings')}
+        </svg>
+      </span>
+      <span class="nav-label">{$t('nav.settings')}</span>
+    </button>
     <button class="nav-item theme-toggle" on:click={toggleTheme} title="Toggle theme">
       <span class="nav-icon">
         {#if $theme === 'system'}
@@ -139,7 +151,7 @@
     </button>
 
     <div class="sidebar-version">
-      <span class="version-text">v0.0.1</span>
+      <span class="version-text">v0.1.0</span>
     </div>
   </div>
 </nav>
@@ -157,6 +169,7 @@
     {#each navItems as item}
       {#if activePage === item.id}{$t(item.key)}{/if}
     {/each}
+    {#if activePage === 'settings'}{$t('nav.settings')}{/if}
   </span>
   <div class="mobile-header-spacer"></div>
 </header>
@@ -202,6 +215,18 @@
   <div class="drawer-divider"></div>
 
   <div class="drawer-footer">
+    <button
+      class="drawer-item"
+      class:active={activePage === 'settings'}
+      on:click={() => navigate('settings')}
+    >
+      <span class="drawer-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          {@html iconSvg('settings')}
+        </svg>
+      </span>
+      <span class="drawer-label">{$t('nav.settings')}</span>
+    </button>
     <button class="drawer-item" on:click={toggleTheme}>
       <span class="drawer-icon">
         {#if $theme === 'light'}
@@ -230,7 +255,7 @@
       <span class="drawer-label">{$t('nav.logout')}</span>
     </button>
 
-    <div class="drawer-version">v0.0.1</div>
+    <div class="drawer-version">v0.1.0</div>
   </div>
 </nav>
 
