@@ -73,6 +73,22 @@ If your Agent supports vision, you don't even need to type — just show it a sc
 
 ---
 
+## 📸 Screenshots
+
+| Overview | Subscriptions |
+|----------|---------------|
+| ![Overview](docs/screenshots/overview.png) | ![Subscriptions](docs/screenshots/subscriptions.png) |
+
+| Calendar | Edit Modal |
+|----------|------------|
+| ![Calendar](docs/screenshots/calendar.png) | ![Edit Modal](docs/screenshots/edit-modal.png) |
+
+| Agent Setup |
+|-------------|
+| ![Agent](docs/screenshots/agent.png) |
+
+---
+
 ## 🚀 Quick Start
 
 ### Docker (Recommended)

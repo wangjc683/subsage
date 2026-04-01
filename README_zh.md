@@ -73,6 +73,22 @@ SubSage 接入 Agent 后，管订阅就变成了聊天：
 
 ---
 
+## 📸 界面预览
+
+| 总览仪表盘 | 订阅管理 |
+|-----------|---------|
+| ![Overview](docs/screenshots/overview.png) | ![Subscriptions](docs/screenshots/subscriptions.png) |
+
+| 日历视图 | 编辑弹窗 |
+|---------|---------|
+| ![Calendar](docs/screenshots/calendar.png) | ![Edit Modal](docs/screenshots/edit-modal.png) |
+
+| Agent 对接 |
+|-----------|
+| ![Agent](docs/screenshots/agent.png) |
+
+---
+
 ## 🚀 快速开始
 
 ### Docker 部署（推荐）
