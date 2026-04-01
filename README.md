@@ -137,7 +137,7 @@ Your data, settings, and API tokens are preserved automatically.
 
 SubSage is Agent-native — even upgrades can be a conversation. Send this to your Agent:
 
-> Check the current version of my SubSage instance at http://localhost:8321/api/agent/stats (use X-API-Token header). Then check the latest release at https://github.com/wangjc683/subsage/releases. If there's a newer version, show me the changelog and ask if I want to upgrade. If I confirm, run `cd ~/subsage && git pull && docker compose down && docker compose up -d --build`, then verify the new version.
+> Check the current version of my SubSage instance, then check the latest release at https://github.com/wangjc683/subsage/releases. If there's a newer version, show me the changelog and ask if I want to upgrade. If I confirm, run the upgrade and verify the new version.
 
 ### Version History
 

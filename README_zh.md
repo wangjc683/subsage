@@ -137,7 +137,7 @@ docker compose up -d --build
 
 SubSage 是 Agent 原生的 —— 升级也可以是一段对话。把下面这段发给你的 Agent：
 
-> 检查我部署在 http://localhost:8321 的 SubSage 当前版本（调用 /api/agent/stats，使用 X-API-Token header 认证）。然后查询 https://github.com/wangjc683/subsage/releases 的最新版本。如果有新版本，告诉我更新内容，问我是否要升级。如果我确认，执行 `cd ~/subsage && git pull && docker compose down && docker compose up -d --build`，然后验证版本号已更新。
+> 检查我部署的 SubSage 当前版本，然后查询 https://github.com/wangjc683/subsage/releases 的最新版本。如果有新版本，告诉我更新内容，问我是否要升级。如果我确认，执行更新操作，然后验证版本号已更新。
 
 ### 版本历史
 
