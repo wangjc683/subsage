@@ -16,6 +16,8 @@ Have a coding Agent like Cursor, Cline, or Windsurf? Copy this and send it:
 
 That's it. Your Agent handles `git clone`, `docker compose up -d`, and opens the app. Zero manual commands.
 
+Want public access? Add a reverse proxy (Nginx or Caddy) with HTTPS.
+
 > **Prerequisite**: Docker is required. Don't have it? Ask your Agent to install it for you.
 
 ---
