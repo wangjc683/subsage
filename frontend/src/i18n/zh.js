@@ -6,8 +6,10 @@ export default {
   'nav.settings': '设置',
   'nav.agent': 'Agent',
   'nav.follow_system': '跟随系统',
+  'nav.light_mode': '浅色模式',
+  'nav.dark_mode': '深色模式',
   'nav.logout': '退出',
-  'nav.version': 'v0.1.0',
+  'nav.version': 'v0.1.1',
 
   // --- Login ---
   'login.tagline': 'AI Agent 原生的订阅管理',
@@ -119,6 +121,7 @@ export default {
   'calendar.total_month': '当月合计',
   'calendar.weekdays': ['一', '二', '三', '四', '五', '六', '日'],
   'calendar.no_subs': '当日无订阅',
+  'calendar.no_renewals_month': '本月没有续费 🎉',
 
   // --- Settings ---
   'settings.title': '设置',

@@ -6,8 +6,10 @@ export default {
   'nav.settings': 'Settings',
   'nav.agent': 'Agent',
   'nav.follow_system': 'Follow System',
+  'nav.light_mode': 'Light Mode',
+  'nav.dark_mode': 'Dark Mode',
   'nav.logout': 'Logout',
-  'nav.version': 'v0.1.0',
+  'nav.version': 'v0.1.1',
 
   // --- Login ---
   'login.tagline': 'AI Agent-Native Subscription Management',
@@ -119,6 +121,7 @@ export default {
   'calendar.total_month': 'Monthly Total',
   'calendar.weekdays': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   'calendar.no_subs': 'No subscriptions on this day',
+  'calendar.no_renewals_month': 'No renewals this month 🎉',
 
   // --- Settings ---
   'settings.title': 'Settings',

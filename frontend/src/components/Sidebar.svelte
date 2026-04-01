@@ -16,6 +16,12 @@
 
   $: activePage = $currentPage;
 
+  // Dynamic theme label based on current preference
+  $: themeLabel = (() => {
+    const labels = { system: 'nav.follow_system', light: 'nav.light_mode', dark: 'nav.dark_mode' };
+    return labels[$theme] || 'nav.follow_system';
+  })();
+
   function navigate(id) {
     currentPage.set(id);
     window.location.hash = `#/${id}`;
@@ -136,7 +142,7 @@
           </svg>
         {/if}
       </span>
-      <span class="nav-label">{$t('nav.follow_system')}</span>
+      <span class="nav-label">{$t(themeLabel)}</span>
     </button>
 
     <button class="nav-item" on:click={handleLogout} title="Logout">
@@ -151,7 +157,7 @@
     </button>
 
     <div class="sidebar-version">
-      <span class="version-text">v0.1.0</span>
+      <span class="version-text">v0.1.1</span>
     </div>
   </div>
 </nav>
@@ -243,7 +249,7 @@
           </svg>
         {/if}
       </span>
-      <span class="drawer-label">{$t('nav.follow_system')}</span>
+      <span class="drawer-label">{$t(themeLabel)}</span>
     </button>
 
     <button class="drawer-item logout" on:click={handleLogout}>
@@ -255,7 +261,7 @@
       <span class="drawer-label">{$t('nav.logout')}</span>
     </button>
 
-    <div class="drawer-version">v0.1.0</div>
+    <div class="drawer-version">v0.1.1</div>
   </div>
 </nav>
 
@@ -485,6 +491,7 @@
     .drawer-item {
       display: flex;
       align-items: center;
+      justify-content: flex-start;
       gap: 12px;
       padding: 12px 14px;
       border-radius: var(--radius);
@@ -492,6 +499,7 @@
       font-size: 15px;
       font-weight: 500;
       width: 100%;
+      text-align: left;
       transition: all var(--transition);
       -webkit-tap-highlight-color: transparent;
       min-height: 44px;
@@ -521,6 +529,7 @@
       height: 1px;
       background: var(--border);
       margin: 8px 18px;
+      margin-top: auto;
     }
 
     .drawer-footer {

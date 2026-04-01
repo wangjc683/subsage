@@ -28,21 +28,22 @@
   $: monthLabel = new Date(year, month).toLocaleDateString($locale === 'zh' ? 'zh-CN' : 'en-US', { year: 'numeric', month: 'long' });
 
   // Group subs by next_renewal date (key = "YYYY-MM-DD")
-  $: subsByKey = {};
   $: renewalSubs = ($subs || []).filter(s => s.status === 'active' && s.next_renewal);
 
-  $: {
-    subsByKey = {};
+  // Build lookup map from renewalSubs (single reactive derivation)
+  $: subsByKey = (() => {
+    const map = {};
     renewalSubs.forEach(s => {
       const d = new Date(s.next_renewal);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      if (!subsByKey[key]) subsByKey[key] = [];
-      subsByKey[key].push(s);
+      if (!map[key]) map[key] = [];
+      map[key].push(s);
     });
-  }
+    return map;
+  })();
 
-  function getSubsForDate(y, m, d) {
-    return subsByKey[`${y}-${m}-${d}`] || [];
+  function getSubsForDate(y, m, d, lookup) {
+    return (lookup || subsByKey)[`${y}-${m}-${d}`] || [];
   }
 
   // Monthly summary (current month only)
@@ -75,16 +76,17 @@
   }
 
   function selectDay(day) {
-    const subs = getSubsForDate(year, month, day);
-    if (subs.length > 0) {
+    const daySubs = getSubsForDate(year, month, day);
+    if (daySubs.length > 0) {
       selectedDay = selectedDay === day ? null : day;
     }
   }
 
   // Build calendar grid with overflow days
-  $: calendarCells = [];
-  $: {
-    calendarCells = [];
+  // Directly reference subsByKey to ensure Svelte tracks the dependency
+  $: calendarCells = (() => {
+    const lookup = subsByKey;
+    const cells = [];
 
     // Previous month overflow
     const prevMonthDays = new Date(year, month, 0).getDate();
@@ -92,35 +94,38 @@
       const d = prevMonthDays - i;
       const pm = month === 0 ? 11 : month - 1;
       const py = month === 0 ? year - 1 : year;
-      calendarCells.push({ day: d, dimmed: true, subs: getSubsForDate(py, pm, d), isToday: false });
+      cells.push({ day: d, dimmed: true, subs: getSubsForDate(py, pm, d, lookup), isToday: false });
     }
 
     // Current month
     for (let d = 1; d <= daysInMonth; d++) {
-      calendarCells.push({
+      cells.push({
         day: d,
         dimmed: false,
-        subs: getSubsForDate(year, month, d),
+        subs: getSubsForDate(year, month, d, lookup),
         isToday: isCurrentMonth && d === todayDate,
       });
     }
 
     // Next month overflow - fill to complete last row
-    const remaining = 7 - (calendarCells.length % 7);
+    const remaining = 7 - (cells.length % 7);
     if (remaining < 7) {
       const nm = month === 11 ? 0 : month + 1;
       const ny = month === 11 ? year + 1 : year;
       for (let d = 1; d <= remaining; d++) {
-        calendarCells.push({ day: d, dimmed: true, subs: getSubsForDate(ny, nm, d), isToday: false });
+        cells.push({ day: d, dimmed: true, subs: getSubsForDate(ny, nm, d, lookup), isToday: false });
       }
     }
-  }
+
+    return cells;
+  })();
 
   // For mobile list view: days with subs this month
   $: daysWithSubs = (() => {
+    const lookup = subsByKey;
     const result = [];
     for (let d = 1; d <= daysInMonth; d++) {
-      const s = getSubsForDate(year, month, d);
+      const s = getSubsForDate(year, month, d, lookup);
       if (s.length > 0) result.push({ day: d, subs: s });
     }
     return result;
@@ -230,7 +235,7 @@
   <!-- Mobile List View -->
   <div class="mobile-calendar-list">
     {#if daysWithSubs.length === 0}
-      <div class="mobile-empty">No renewals this month 🎉</div>
+      <div class="mobile-empty">{$t('calendar.no_renewals_month')}</div>
     {:else}
       {#each daysWithSubs as { day, subs: daySubs }}
         <div class="mobile-day-group">
@@ -393,6 +398,7 @@
     .mobile-calendar-list { display: block; margin-top: 8px; }
 
     .page-header { flex-direction: column; }
+    .page-header h1 { display: none; }
 
     .mobile-empty {
       text-align: center; padding: 40px 0;

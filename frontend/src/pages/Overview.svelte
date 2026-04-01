@@ -488,9 +488,54 @@
     .content-row { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
-    .overview-page { padding: 20px 16px; }
-    .stats-bar { grid-template-columns: 1fr 1fr; }
-    .stat-value { font-size: 22px; }
-    .cat-bar-row { grid-template-columns: 120px 1fr 100px; gap: 10px; }
+    .overview-page { padding: 16px 0; }
+
+    /* Stack header vertically */
+    .page-header {
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .page-header h1 { font-size: 18px; }
+    .page-date { font-size: 12px; }
+    .header-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    /* Compact stat cards */
+    .stats-bar {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      padding: 14px 14px;
+    }
+    .stat-label { font-size: 11px; margin-bottom: 4px; }
+    .stat-value { font-size: 20px; }
+    .stat-unit { font-size: 12px; }
+    .stat-hint { font-size: 10px; }
+    .stat-trend { font-size: 11px; margin-top: 4px; }
+
+    /* Agent badge compact */
+    .agent-badge { font-size: 11px; padding: 4px 10px; }
+
+    /* Category bars adapt */
+    .cat-bar-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+    .cat-bar-label { margin-bottom: 2px; }
+    .cat-bar-value {
+      text-align: left;
+      flex-direction: row;
+      gap: 8px;
+    }
+
+    /* Panels */
+    .panel { padding: 16px; }
+    .content-row { gap: 14px; margin-bottom: 16px; }
+    .panel.full-width { margin-bottom: 16px; }
   }
 </style>

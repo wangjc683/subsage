@@ -14,6 +14,7 @@
   let formLoading = false;
   let customCategoryInput = '';
   let showDeleteConfirm = false;
+  let renewalManuallyEdited = false;
 
   $: isCustomCategory = form.category === '__custom__';
   $: editing = sub !== null;
@@ -43,6 +44,7 @@
     }
     formError = '';
     customCategoryInput = '';
+    renewalManuallyEdited = false;
     showDeleteConfirm = false;
   } else if (!show) {
     formInitialized = false;
@@ -110,8 +112,20 @@
     return d.toISOString().split('T')[0];
   }
 
-  $: if (form.start_date && form.cycle && !form.next_renewal) {
-    form.next_renewal = calcNextRenewal(form.start_date, form.cycle);
+  function handleStartDateChange() {
+    if (!renewalManuallyEdited && form.start_date && form.cycle) {
+      form.next_renewal = calcNextRenewal(form.start_date, form.cycle);
+    }
+  }
+
+  function handleCycleChangeForRenewal() {
+    if (!renewalManuallyEdited && form.start_date && form.cycle) {
+      form.next_renewal = calcNextRenewal(form.start_date, form.cycle);
+    }
+  }
+
+  function handleRenewalManualEdit() {
+    renewalManuallyEdited = true;
   }
 </script>
 
@@ -151,7 +165,7 @@
           <div class="form-row">
             <div class="form-group form-price"><label>{$t('subs.price')} *</label><input type="number" step="0.01" bind:value={form.price} placeholder="0.00" /></div>
             <div class="form-group form-auto"><label>{$t('subs.currency')}</label><select bind:value={form.currency}>{#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}<option value={cur}>{cur}</option>{/each}</select></div>
-            <div class="form-group form-auto"><label>{$t('subs.cycle')}</label><select bind:value={form.cycle}>{#each cycleIds as cid}<option value={cid}>{$t(`cycle.${cid}`)}</option>{/each}</select></div>
+            <div class="form-group form-auto"><label>{$t('subs.cycle')}</label><select bind:value={form.cycle} on:change={handleCycleChangeForRenewal}>{#each cycleIds as cid}<option value={cid}>{$t(`cycle.${cid}`)}</option>{/each}</select></div>
             <div class="form-group form-price"><label>{$t('subs.original_price')}</label><input type="number" step="0.01" bind:value={form.original_price} placeholder="" /></div>
           </div>
           {#if form.original_price}
@@ -167,8 +181,8 @@
             <div class="form-group form-auto"><label>Remind</label><select bind:value={form.remind_days}><option value={1}>1d before</option><option value={3}>3d before</option><option value={7}>7d before</option></select></div>
           </div>
           <div class="form-row">
-            <div class="form-group flex-1"><label>{$t('subs.start_date')}</label><input type="date" bind:value={form.start_date} /></div>
-            <div class="form-group flex-1"><label>{$t('subs.next_renewal')}</label><input type="date" bind:value={form.next_renewal} /></div>
+            <div class="form-group flex-1"><label>{$t('subs.start_date')}</label><input type="date" bind:value={form.start_date} on:change={handleStartDateChange} /></div>
+            <div class="form-group flex-1"><label>{$t('subs.next_renewal')}</label><input type="date" bind:value={form.next_renewal} on:change={handleRenewalManualEdit} /></div>
           </div>
         </div>
 
@@ -239,6 +253,24 @@
     box-shadow: 0 0 0 3px var(--primary-glow);
   }
   .form-group textarea { resize: vertical; }
+
+  /* Make date inputs clickable anywhere to open picker */
+  .form-group input[type="date"] {
+    position: relative;
+    cursor: pointer;
+  }
+  .form-group input[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: auto;
+    color: transparent;
+    background: transparent;
+    cursor: pointer;
+  }
 
   .form-section { margin-bottom: 6px; padding-bottom: 4px; }
   .form-section:not(:last-child) {

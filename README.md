@@ -161,6 +161,7 @@ See the full changelog at [GitHub Releases](https://github.com/wangjc683/subsage
 
 | Version | Highlights |
 |---------|-----------|
+| v0.1.1 | Bug fixes: calendar refresh, theme label, category names; Mobile UX polish |
 | v0.1.0 | Shared edit modal, Calendar UX overhaul, Chart.js fix, i18n polish |
 | v0.0.1 | Initial release — full CRUD, Agent API, multi-currency, i18n |
 

@@ -35,7 +35,7 @@
     ($subs || []).forEach(s => { counts[s.category] = (counts[s.category] || 0) + 1; });
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
-      .map(([id, count]) => ({ id, count, name: getCategoryName(id), icon: getCategoryIcon(id) }));
+      .map(([id, count]) => ({ id, count, icon: getCategoryIcon(id) }));
   })();
 
 
@@ -202,7 +202,7 @@
       <button class="pill" class:active={filterCategory === ''} on:click={() => { filterCategory = ''; refresh(); }}>{$t('subs.all')}({($subs || []).length})</button>
       {#each usedCategories as cat}
         <button class="pill" class:active={filterCategory === cat.id} on:click={() => setCategoryFilter(cat.id)}>
-          {cat.icon} {cat.name}({cat.count})
+          {cat.icon} {getCategoryName(cat.id, $t)}({cat.count})
         </button>
       {/each}
       <button class="pill pill-more" on:click={() => showAllCategories = !showAllCategories}>
@@ -213,7 +213,7 @@
       <div class="pill-filters pill-filters-all animate-fade-in">
         {#each categories.filter(c => !usedCategories.find(u => u.id === c.id)) as cat}
           <button class="pill pill-empty" class:active={filterCategory === cat.id} on:click={() => setCategoryFilter(cat.id)}>
-            {cat.icon} {cat.name}
+            {cat.icon} {getCategoryName(cat.id, $t)}
           </button>
         {/each}
       </div>
@@ -296,9 +296,9 @@
               </div>
               <div class="sub-row-bottom">
                 <div class="sub-meta">
-                  <span class="sub-cat-label">{getCategoryIcon(sub.category)} {getCategoryName(sub.category)}</span>
+                  <span class="sub-cat-label">{getCategoryIcon(sub.category)} {getCategoryName(sub.category, $t)}</span>
                   <span class="meta-dot">·</span>
-                  <span>{getCycleName(sub.cycle)}</span>
+                  <span>{getCycleName(sub.cycle, $t)}</span>
                   {#if sub.payment_method}
                     <span class="meta-dot">·</span>
                     <span>{sub.payment_method}</span>
@@ -372,7 +372,7 @@
                 {/if}
                 <div class="detail-item">
                   <span class="detail-label">{$t('subs.category')}</span>
-                  <span class="detail-value">{getCategoryIcon(sub.category)} {getCategoryName(sub.category)}</span>
+                  <span class="detail-value">{getCategoryIcon(sub.category)} {getCategoryName(sub.category, $t)}</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">Created</span>
@@ -663,5 +663,54 @@
   @media (max-width: 768px) {
     .sub-actions { opacity: 1 !important; }
     .pill-filters { padding-bottom: 8px; }
+
+    /* Hide duplicate title (top bar already shows it) */
+    .page-header h1 { display: none; }
+
+    /* Stack header: subtitle on left, buttons on right still works */
+    .page-header {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .header-actions { gap: 6px; }
+    .btn-batch { padding: 7px 10px; font-size: 13px; }
+    .btn-add { padding: 7px 12px; font-size: 13px; }
+
+    /* Card: name and price on separate rows */
+    .sub-row-top {
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .sub-name-group {
+      flex: 1 0 100%;
+    }
+    .sub-price-group {
+      flex: 1 0 auto;
+    }
+
+    /* Bottom row wrap */
+    .sub-row-bottom {
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .sub-right-info {
+      flex: 1 0 auto;
+    }
+
+    /* Compact card padding */
+    .sub-card {
+      gap: 12px;
+      padding: 14px 12px;
+    }
+    .sub-icon-box {
+      width: 38px;
+      height: 38px;
+    }
+    .sub-icon-emoji { font-size: 18px; }
+
+    /* Detail expansion less indented on mobile */
+    .sub-detail {
+      padding: 14px 12px 14px 12px;
+    }
   }
 </style>
