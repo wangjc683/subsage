@@ -155,6 +155,7 @@ export default {
   'settings.license': 'License',
   'settings.license_val': 'Open Source · Self-hosted',
   'settings.agent_link': 'Go to Agent page →',
+  'settings.github_hint': 'Star us if SubSage is useful!',
 
   // --- Agent ---
   'agent.title': '🤖 Agent Setup',

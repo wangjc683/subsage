@@ -259,6 +259,21 @@
         <a href="#/agent" class="about-link">{$t('settings.agent_link')}</a>
       </div>
     </div>
+
+    <div class="about-divider"></div>
+
+    <a href="https://github.com/wangjc683/subsage" target="_blank" rel="noopener noreferrer" class="about-github">
+      <span class="github-left">
+        <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        <span class="github-text">
+          <span class="github-title">GitHub</span>
+          <span class="github-hint">{$t('settings.github_hint')}</span>
+        </span>
+      </span>
+      <span class="github-star">⭐ Star</span>
+    </a>
   </div>
 </div>
 
@@ -517,6 +532,55 @@
     color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 500;
   }
   .about-link:hover { text-decoration: underline; }
+
+  /* GitHub Star CTA */
+  .about-github {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all var(--transition);
+    cursor: pointer;
+  }
+  .about-github:hover {
+    background: var(--hover);
+  }
+  .github-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-secondary);
+  }
+  .github-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .github-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .github-hint {
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+  .github-star {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--card);
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+  }
+  .about-github:hover .github-star {
+    background: var(--primary-tint);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
 
   @media (max-width: 768px) {
     .settings-page { padding: 24px 0; }

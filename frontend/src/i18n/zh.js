@@ -155,6 +155,7 @@ export default {
   'settings.license': '许可',
   'settings.license_val': '开源免费 · 自托管',
   'settings.agent_link': '前往 Agent 页面 →',
+  'settings.github_hint': '觉得好用？给个 Star 帮助更多人发现！',
 
   // --- Agent ---
   'agent.title': '🤖 Agent 接入',
