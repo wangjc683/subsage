@@ -10,15 +10,17 @@ SubSage is a self-hosted subscription tracker that works **with your AI Agent**.
 
 ## 🤖 Deploy with Your AI Agent
 
-Have a coding Agent like Cursor, Cline, or Windsurf? Copy this and send it:
+Have a coding Agent like Cursor, Cline, or Windsurf? Copy one of these and send it:
 
-> Pull wangjc683/subsage from Docker Hub and run it with `docker run -d -p 8321:8321 -v subsage-data:/data wangjc683/subsage`. After it starts, open http://localhost:8321 in my browser.
+**Option A — Script install (no Docker needed):**
 
-That's it. Your Agent handles `docker run` and opens the app. Zero manual commands.
+> Run `curl -fsSL https://raw.githubusercontent.com/wangjc683/subsage/main/install.sh | bash` to install SubSage. After it starts, open http://localhost:8321 in my browser.
 
-Want public access? Add a reverse proxy (Nginx or Caddy) with HTTPS.
+**Option B — Docker:**
 
-> **Prerequisite**: Docker is required. Don't have it? Ask your Agent to install it for you.
+> Run `docker run -d --name subsage -p 8321:8321 -v subsage-data:/data wangjc683/subsage`. After it starts, open http://localhost:8321 in my browser.
+
+That's it. Your Agent runs one command and opens the app. Zero manual setup.
 
 ---
 

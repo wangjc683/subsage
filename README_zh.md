@@ -10,15 +10,17 @@ SubSage 是一个自托管的订阅管理工具，**和你的 AI Agent 协同工
 
 ## 🤖 用 AI Agent 部署
 
-请复制下面这段话发给你的AI Agent：
+有 Cursor、Cline、Windsurf 等编程 Agent？复制以下任意一段发给它：
 
-> 从 Docker Hub 拉取 wangjc683/subsage 镜像，运行 `docker run -d -p 8321:8321 -v subsage-data:/data wangjc683/subsage`，启动后在浏览器打开 http://localhost:8321
+**方式 A — 脚本安装（无需 Docker）：**
 
-就这样。Agent 会自动完成部署并打开应用。你不需要手动输入任何命令。
+> 运行 `curl -fsSL https://raw.githubusercontent.com/wangjc683/subsage/main/install.sh | bash` 安装 SubSage，启动后在浏览器打开 http://localhost:8321
 
-需要外网访问？配合 Nginx 或 Caddy 反向代理即可，建议开启 HTTPS。
+**方式 B — Docker：**
 
-> **前提**：需要 Docker 环境。没装？也可以让 Agent 帮你搞定。
+> 运行 `docker run -d --name subsage -p 8321:8321 -v subsage-data:/data wangjc683/subsage`，启动后在浏览器打开 http://localhost:8321
+
+就这样。Agent 执行一条命令就搞定，零手动操作。
 
 ---
 
