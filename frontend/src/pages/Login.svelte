@@ -184,7 +184,7 @@
       </div>
 
       <div class="login-footer">
-        <span class="login-version">SubSage v0.1.1</span>
+        <span class="login-version">SubSage v0.2.0</span>
       </div>
     </div>
   </div>

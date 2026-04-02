@@ -1,7 +1,7 @@
 services:
   subsage:
     build: .
-    image: subsage:latest
+    image: wangjc683/subsage:latest
     container_name: subsage
     restart: unless-stopped
     ports:

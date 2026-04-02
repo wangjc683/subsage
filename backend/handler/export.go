@@ -25,9 +25,9 @@ func (h *ExportHandler) Excel(c echo.Context) error {
 
 	headers := []string{"名称", "分类", "状态", "价格", "原价", "折扣说明", "币种", "计费周期", "支付方式", "开始日期", "下次续费", "网址", "备注", "提醒天数", "创建时间"}
 	categories := map[string]string{
-		"ai": "AI 服务", "saas": "SaaS", "media": "影音", "domain": "域名", "vps": "VPS",
-		"app": "应用", "vpn": "VPN", "dev": "开发工具", "membership": "会员", "gaming": "游戏",
-		"edu": "教育", "storage": "云存储", "other": "其他",
+		"ai": "AI 服务", "video": "视频", "music": "音乐", "software": "软件工具",
+		"dev": "开发者", "cloud": "云服务", "security": "安全隐私",
+		"app": "应用", "gaming": "游戏", "membership": "会员", "other": "其他",
 	}
 	statuses := map[string]string{"active": "活跃", "paused": "暂停", "cancelled": "已取消"}
 	cycles := map[string]string{"monthly": "月付", "yearly": "年付", "quarterly": "季付", "weekly": "周付", "lifetime": "终身"}
@@ -63,9 +63,12 @@ func (h *ExportHandler) Excel(c echo.Context) error {
 			originalPriceStr = fmt.Sprintf("%.2f", *s.OriginalPrice)
 		}
 
+		catName := categories[s.Category]
+		if catName == "" { catName = s.Category }
+
 		vals := []interface{}{
 			s.Name,
-			categories[s.Category],
+			catName,
 			statuses[s.Status],
 			s.Price,
 			originalPriceStr,

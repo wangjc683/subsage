@@ -333,9 +333,13 @@
   .stat-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 22px 20px;
-    transition: all var(--transition); position: relative;
+    transition: all 0.25s ease; position: relative;
   }
-  .stat-card:hover { box-shadow: var(--shadow-sm); }
+  .stat-card:hover {
+    box-shadow: var(--shadow-sm);
+    border-color: var(--text-tertiary);
+    transform: translateY(-1px);
+  }
   .hero-card { border-left: 3px solid var(--primary); }
   .stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
   .stat-value { font-family: 'DM Sans', sans-serif; font-size: 26px; font-weight: 700; line-height: 1.2; }
@@ -375,9 +379,12 @@
   .panel {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 24px;
-    transition: box-shadow var(--transition);
+    transition: all 0.25s ease;
   }
-  .panel:hover { box-shadow: var(--shadow-sm); }
+  .panel:hover {
+    box-shadow: var(--shadow-sm);
+    border-color: var(--text-tertiary);
+  }
   .panel.full-width { margin-bottom: 24px; }
   .panel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
   .panel-title { font-size: 15px; font-weight: 600; }
@@ -429,8 +436,10 @@
   .cat-bars { display: flex; flex-direction: column; gap: 12px; }
   .cat-bar-row {
     display: grid; grid-template-columns: 160px 1fr 120px; gap: 16px;
-    align-items: center; padding: 6px 0;
+    align-items: center; padding: 6px 8px;
+    border-radius: var(--radius-sm); transition: background 0.2s ease;
   }
+  .cat-bar-row:hover { background: var(--hover); }
   .cat-bar-label { display: flex; align-items: center; gap: 8px; }
   .cat-bar-icon {
     font-size: 14px; width: 28px; height: 28px;
@@ -461,6 +470,12 @@
   }
   .currency-item {
     background: var(--hover); border-radius: var(--radius-sm); padding: 14px;
+    transition: all 0.25s ease; border: 1px solid transparent;
+  }
+  .currency-item:hover {
+    transform: translateY(-1px);
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
   }
   .currency-name { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }
   .currency-monthly { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; }

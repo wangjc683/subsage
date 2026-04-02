@@ -3,7 +3,7 @@
 ## 概述
 SubSage is a self-hosted subscription management tool. **AI Agent Native**: it exposes itself as a tool for your existing AI Agent via REST API.
 
-**当前版本**: v0.1.1
+**当前版本**: v0.2.0
 
 ## 产品定位
 

@@ -69,7 +69,7 @@ function createThemeStore() {
     applyTheme(saved);
   }
 
-  const { subscribe, set } = writable(saved);
+  const { subscribe, set: _set } = writable(saved);
   let currentPreference = saved;
 
   // Listen for system theme changes when in system mode
@@ -86,18 +86,24 @@ function createThemeStore() {
     subscribe,
     get preference() { return currentPreference; },
     get resolved() { return getResolvedTheme(currentPreference); },
+    set(value) {
+      currentPreference = value;
+      localStorage.setItem('sage_theme', value);
+      applyTheme(value);
+      _set(value);
+    },
     toggle() {
       const next = { system: 'light', light: 'dark', dark: 'system' }[currentPreference] || 'system';
       currentPreference = next;
       localStorage.setItem('sage_theme', next);
       applyTheme(next);
-      set(next);
+      _set(next);
     },
     init() {
       const s = localStorage.getItem('sage_theme') || 'system';
       currentPreference = s;
       applyTheme(s);
-      set(s);
+      _set(s);
     },
   };
 }

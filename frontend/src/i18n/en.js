@@ -9,7 +9,7 @@ export default {
   'nav.light_mode': 'Light Mode',
   'nav.dark_mode': 'Dark Mode',
   'nav.logout': 'Logout',
-  'nav.version': 'v0.1.1',
+  'nav.version': 'v0.2.0',
 
   // --- Login ---
   'login.tagline': 'AI Agent-Native Subscription Management',
@@ -71,6 +71,7 @@ export default {
   'subs.active': 'Active',
   'subs.paused': 'Paused',
   'subs.cancelled': 'Cancelled',
+  'subs.sort_default': 'Default',
   'subs.sort_name': 'Name',
   'subs.sort_price': 'Price',
   'subs.sort_renewal': 'Renewal',
@@ -103,7 +104,8 @@ export default {
   'subs.saving': 'Saving...',
   'subs.save': 'Save',
   'subs.create': 'Create',
-  'subs.delete_confirm': 'Confirm delete?',
+  'subs.delete_confirm': 'Confirm Delete',
+  'subs.delete_confirm_desc': 'Are you sure you want to delete "{name}"? This action cannot be undone.',
   'subs.delete': 'Delete',
   'subs.per_month': '/mo',
   'subs.per_year': '/yr',
@@ -114,6 +116,10 @@ export default {
   'subs.renews_today': 'Renews today',
   'subs.total_monthly': 'Total Monthly',
   'subs.total_yearly': 'Total Yearly',
+  'subs.reminder_days': '{days}d reminder',
+  'subs.created_at': 'Created',
+  'subs.more': 'More',
+  'subs.less': 'Less',
 
   // --- Calendar ---
   'calendar.title': 'Calendar',
@@ -156,6 +162,11 @@ export default {
   'settings.license_val': 'Open Source · Self-hosted',
   'settings.agent_link': 'Go to Agent page →',
   'settings.github_hint': 'Star us if SubSage is useful!',
+  'settings.appearance': 'Appearance',
+  'settings.appearance_desc': 'Choose interface theme',
+  'settings.theme_system': 'System',
+  'settings.theme_light': 'Light',
+  'settings.theme_dark': 'Dark',
 
   // --- Agent ---
   'agent.title': '🤖 Agent Setup',

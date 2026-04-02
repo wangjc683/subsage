@@ -9,7 +9,7 @@ export default {
   'nav.light_mode': '浅色模式',
   'nav.dark_mode': '深色模式',
   'nav.logout': '退出',
-  'nav.version': 'v0.1.1',
+  'nav.version': 'v0.2.0',
 
   // --- Login ---
   'login.tagline': 'AI Agent 原生的订阅管理',
@@ -71,10 +71,11 @@ export default {
   'subs.active': '活跃',
   'subs.paused': '已暂停',
   'subs.cancelled': '已取消',
+  'subs.sort_default': '默认排序',
   'subs.sort_name': '名称',
   'subs.sort_price': '价格',
   'subs.sort_renewal': '续费',
-  'subs.sort_created': '创建',
+  'subs.sort_created': '创建时间',
   'subs.no_results': '没有匹配的订阅',
   'subs.no_results_desc': '试试不同的搜索或筛选条件',
   'subs.empty_title': '还没有订阅',
@@ -103,7 +104,8 @@ export default {
   'subs.saving': '保存中...',
   'subs.save': '保存',
   'subs.create': '创建',
-  'subs.delete_confirm': '确认删除？',
+  'subs.delete_confirm': '确认删除',
+  'subs.delete_confirm_desc': '确定要删除「{name}」吗？此操作不可撤销。',
   'subs.delete': '删除',
   'subs.per_month': '/月',
   'subs.per_year': '/年',
@@ -114,6 +116,10 @@ export default {
   'subs.renews_today': '今天续费',
   'subs.total_monthly': '月均合计',
   'subs.total_yearly': '年均合计',
+  'subs.reminder_days': '提前 {days} 天提醒',
+  'subs.created_at': '创建时间',
+  'subs.more': '更多',
+  'subs.less': '收起',
 
   // --- Calendar ---
   'calendar.title': '日历',
@@ -156,6 +162,11 @@ export default {
   'settings.license_val': '开源免费 · 自托管',
   'settings.agent_link': '前往 Agent 页面 →',
   'settings.github_hint': '觉得好用？给个 Star 帮助更多人发现！',
+  'settings.appearance': '外观',
+  'settings.appearance_desc': '选择界面显示主题',
+  'settings.theme_system': '跟随系统',
+  'settings.theme_light': '浅色模式',
+  'settings.theme_dark': '深色模式',
 
   // --- Agent ---
   'agent.title': '🤖 Agent 接入',

@@ -1,7 +1,8 @@
 <script>
   import { settings } from '../stores/index.js';
+  import { currencies, theme } from '../stores/index.js';
   import { exportExcel, exportJSON, importJSON as apiImportJSON, getExchangeRates } from '../api/index.js';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { t, locale, locales, setLocale } from '../i18n/index.js';
 
   let baseCurrency = 'USD';
@@ -10,6 +11,12 @@
   let importing = false;
   let importError = '';
   let importSuccess = '';
+  let langDropdownOpen = false;
+  let currencyDropdownOpen = false;
+  let themeDropdownOpen = false;
+  let langDropdownEl;
+  let currencyDropdownEl;
+  let themeDropdownEl;
 
   // Load settings on mount
   settings.fetch();
@@ -19,6 +26,46 @@
   $: if ($settings && $settings.base_currency && !settingsLoaded) {
     baseCurrency = $settings.base_currency;
     settingsLoaded = true;
+  }
+
+  $: currentLocaleName = locales.find(l => l.code === $locale)?.name || $locale;
+
+  function selectLocale(code) {
+    setLocale(code);
+    langDropdownOpen = false;
+  }
+
+  function selectCurrency(cur) {
+    baseCurrency = cur;
+    currencyDropdownOpen = false;
+    // Auto-save immediately
+    settings.update({ base_currency: cur }).catch(() => {});
+  }
+
+  function handleSettingsClickOutside(e) {
+    if (langDropdownEl && !langDropdownEl.contains(e.target)) langDropdownOpen = false;
+    if (currencyDropdownEl && !currencyDropdownEl.contains(e.target)) currencyDropdownOpen = false;
+    if (themeDropdownEl && !themeDropdownEl.contains(e.target)) themeDropdownOpen = false;
+  }
+
+  // Theme
+  $: themeLabel = ({ system: $t('settings.theme_system'), light: $t('settings.theme_light'), dark: $t('settings.theme_dark') })[$theme] || $t('settings.theme_system');
+  const themeOptions = [
+    { value: 'system', key: 'settings.theme_system' },
+    { value: 'light', key: 'settings.theme_light' },
+    { value: 'dark', key: 'settings.theme_dark' },
+  ];
+
+  function selectTheme(value) {
+    theme.set(value);
+    themeDropdownOpen = false;
+  }
+
+  function handleLogout() {
+    import('../stores/index.js').then(({ auth }) => {
+      auth.logout();
+      window.location.hash = '#/login';
+    });
   }
 
   let rateInfo = null;
@@ -52,7 +99,13 @@
     return diff > 25 * 60 * 60 * 1000; // >25h
   })();
 
-  onMount(() => { loadRates(); });
+  onMount(() => {
+    loadRates();
+    window.addEventListener('click', handleSettingsClickOutside, true);
+  });
+  onDestroy(() => {
+    window.removeEventListener('click', handleSettingsClickOutside, true);
+  });
 
 
   async function handleSave() {
@@ -124,26 +177,73 @@
         <div class="setting-label">{$t('settings.language')}</div>
         <div class="setting-desc">{$t('settings.language_desc')}</div>
       </div>
-      <select value={$locale} on:change={(e) => setLocale(e.target.value)} class="setting-select">
-        {#each locales as l}
-          <option value={l.code}>{l.name}</option>
-        {/each}
-      </select>
+      <div class="setting-dropdown" bind:this={langDropdownEl}>
+        <button class="setting-trigger" on:click={() => langDropdownOpen = !langDropdownOpen}>
+          <span>{currentLocaleName}</span>
+          <svg class="setting-chevron" class:open={langDropdownOpen} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        {#if langDropdownOpen}
+          <div class="setting-menu animate-fade-in">
+            {#each locales as l}
+              <button class="setting-option" class:active={$locale === l.code} on:click={() => selectLocale(l.code)}>
+                <span>{l.name}</span>
+                {#if $locale === l.code}
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
     <div class="setting-row">
       <div class="setting-info">
         <div class="setting-label">{$t('settings.base_currency')}</div>
         <div class="setting-desc">{$t('settings.base_currency_desc')}</div>
       </div>
-      <select bind:value={baseCurrency} class="setting-select">
-        {#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}
-          <option value={cur}>{cur}</option>
-        {/each}
-      </select>
+      <div class="setting-dropdown" bind:this={currencyDropdownEl}>
+        <button class="setting-trigger" on:click={() => currencyDropdownOpen = !currencyDropdownOpen}>
+          <span>{baseCurrency}</span>
+          <svg class="setting-chevron" class:open={currencyDropdownOpen} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        {#if currencyDropdownOpen}
+          <div class="setting-menu animate-fade-in">
+            {#each currencies as cur}
+              <button class="setting-option" class:active={baseCurrency === cur} on:click={() => selectCurrency(cur)}>
+                <span>{cur}</span>
+                {#if baseCurrency === cur}
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
-    <button class="btn-primary" on:click={handleSave} disabled={saving}>
-      {saving ? $t('settings.saving') : saved ? $t('settings.saved') : $t('settings.save')}
-    </button>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">{$t('settings.appearance')}</div>
+        <div class="setting-desc">{$t('settings.appearance_desc')}</div>
+      </div>
+      <div class="setting-dropdown" bind:this={themeDropdownEl}>
+        <button class="setting-trigger" on:click={() => themeDropdownOpen = !themeDropdownOpen}>
+          <span>{themeLabel}</span>
+          <svg class="setting-chevron" class:open={themeDropdownOpen} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        {#if themeDropdownOpen}
+          <div class="setting-menu animate-fade-in">
+            {#each themeOptions as opt}
+              <button class="setting-option" class:active={$theme === opt.value} on:click={() => selectTheme(opt.value)}>
+                <span>{$t(opt.key)}</span>
+                {#if $theme === opt.value}
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
   </div>
 
   <div class="settings-section animate-fade-in" style="animation-delay: 60ms">
@@ -244,7 +344,7 @@
     <div class="about-info">
       <div class="about-row">
         <span class="about-key">{$t('settings.version')}</span>
-        <span class="about-val">v0.1.1</span>
+        <span class="about-val">v0.2.0</span>
       </div>
       <div class="about-row">
         <span class="about-key">{$t('settings.tech_stack')}</span>
@@ -275,6 +375,13 @@
       <span class="github-star">⭐ Star</span>
     </a>
   </div>
+
+  <button class="btn-logout" on:click={handleLogout}>
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+    {$t('nav.logout')}
+  </button>
 </div>
 
 <style>
@@ -298,6 +405,23 @@
     border-radius: var(--radius);
     padding: 24px;
     margin-bottom: 20px;
+    position: relative;
+    overflow: visible;
+    z-index: 1;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .settings-section:first-of-type {
+    z-index: 4;
+  }
+  .settings-section:nth-of-type(2) {
+    z-index: 3;
+  }
+  .settings-section:nth-of-type(3) {
+    z-index: 2;
+  }
+  .settings-section:hover {
+    border-color: var(--text-tertiary);
+    box-shadow: var(--shadow-sm);
   }
 
   .section-title {
@@ -327,43 +451,43 @@
     margin-top: 2px;
   }
 
-  .setting-select {
-    padding: 8px 12px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-size: 14px;
-    min-width: 100px;
-    transition: all var(--transition);
+  .setting-dropdown {
+    position: relative;
   }
 
-  .setting-select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(61, 124, 95, 0.25);
+  .setting-trigger {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-primary); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all var(--transition); min-width: 100px;
+    justify-content: space-between;
+  }
+  .setting-trigger:hover { background: var(--hover); border-color: var(--text-tertiary); }
+
+  .setting-chevron {
+    color: var(--text-tertiary); transition: transform 0.2s; flex-shrink: 0;
+  }
+  .setting-chevron.open { transform: rotate(180deg); }
+
+  .setting-menu {
+    position: absolute; top: calc(100% + 6px); right: 0;
+    min-width: 140px; padding: 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-lg);
+    z-index: 100;
+    max-height: 260px; overflow-y: auto;
   }
 
-  .btn-primary {
-    padding: 8px 18px;
-    background: var(--primary);
-    color: white;
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-weight: 500;
-    transition: all var(--transition);
+  .setting-option {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; padding: 8px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text-secondary); background: none;
+    text-align: left; cursor: pointer; transition: all var(--transition);
   }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--primary-light);
-  }
-
-  .btn-primary:active:not(:disabled) {
-    transform: scale(0.97);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-  }
+  .setting-option:hover { background: var(--hover); color: var(--text-primary); }
+  .setting-option.active { color: var(--primary); font-weight: 600; }
+  .setting-option svg { color: var(--primary); flex-shrink: 0; }
 
   .data-actions {
     display: flex;
@@ -467,6 +591,12 @@
     padding: 8px 14px; background: var(--card);
     border: 1px solid var(--border); border-radius: var(--radius-sm);
     font-size: 13px;
+    transition: all 0.2s ease;
+  }
+  .rate-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--text-tertiary);
   }
   .rate-pair { color: var(--text-secondary); font-size: 12px; }
   .rate-value { font-family: 'DM Sans', sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -582,7 +712,24 @@
     color: var(--primary);
   }
 
+
+  /* Logout */
+  .btn-logout {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px; margin-top: 4px;
+    border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface); color: var(--error);
+    font-size: 14px; font-weight: 500;
+    transition: all 0.2s ease; cursor: pointer;
+  }
+  .btn-logout:hover {
+    background: rgba(237, 63, 63, 0.06);
+    border-color: var(--error);
+  }
+  .btn-logout:active { transform: scale(0.98); }
+
   @media (max-width: 768px) {
     .settings-page { padding: 24px 0; }
+    .page-header h1 { display: none; }
   }
 </style>

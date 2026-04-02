@@ -54,27 +54,33 @@
   --skeleton-shine: #F5F5F5;
 }
 
-/* --- Dark Theme --- */
+/* --- Dark Theme (Notion-inspired warm charcoal) --- */
 [data-theme="dark"] {
-  --bg: #111111;
-  --surface: #181818;
-  --card: #232323;
-  --hover: #2C2C2C;
-  --border: #2E2E2E;
-  --border-light: #262626;
+  --bg: #191919;
+  --surface: #202020;
+  --card: #262626;
+  --hover: #2F2F2F;
+  --border: #363636;
+  --border-light: #2D2D2D;
 
-  --text-primary: #E4E4E4;
-  --text-secondary: #999999;
-  --text-tertiary: #666666;
+  --text-primary: #EBEBEB;
+  --text-secondary: #9B9B9B;
+  --text-tertiary: #6B6B6B;
 
-  --primary-glow: rgba(61, 124, 95, 0.35);
+  --primary-tint: rgba(61, 124, 95, 0.15);
+  --primary-faint: rgba(61, 124, 95, 0.06);
+  --primary-glow: rgba(61, 124, 95, 0.3);
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  --error: #EB5757;
+  --success: #4DB935;
+  --warning: #F2C94C;
 
-  --skeleton-base: #252525;
-  --skeleton-shine: #2E2E2E;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.24);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.32);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+
+  --skeleton-base: #262626;
+  --skeleton-shine: #303030;
 }
 
 /* --- Reset & Base --- */

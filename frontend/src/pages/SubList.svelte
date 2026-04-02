@@ -16,6 +16,42 @@
   let selectedIds = new Set();
   let batchMode = false;
   let showAllCategories = false;
+  let searchFocused = false;
+  let sortDropdownOpen = false;
+  let sortDropdownEl;
+  let deleteConfirmSub = null;
+
+  const sortOptions = [
+    { value: '', key: 'subs.sort_default' },
+    { value: 'price', key: 'subs.sort_price' },
+    { value: 'next_renewal', key: 'subs.sort_renewal' },
+    { value: 'created', key: 'subs.sort_created' },
+    { value: 'name', key: 'subs.sort_name' },
+  ];
+
+  $: sortLabel = $t(sortOptions.find(o => o.value === sortBy)?.key || 'subs.sort_default');
+
+  function selectSort(value) {
+    if (sortBy === value && value !== '') {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortBy = value;
+      sortOrder = 'asc';
+    }
+    sortDropdownOpen = false;
+    refresh();
+  }
+
+  function handleClickOutside(e) {
+    if (sortDropdownEl && !sortDropdownEl.contains(e.target)) {
+      sortDropdownOpen = false;
+    }
+  }
+
+  function setStatusFilter(status) {
+    filterStatus = filterStatus === status ? '' : status;
+    refresh();
+  }
 
 
   $: filteredSubs = ($subs || []).filter(s => {
@@ -76,8 +112,14 @@
     if (e.key === 'Escape') { expandedId = null; batchMode = false; selectedIds.clear(); }
   }
 
-  onMount(() => { window.addEventListener('keydown', handleKeydown); });
-  onDestroy(() => { window.removeEventListener('keydown', handleKeydown); });
+  onMount(() => {
+    window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('click', handleClickOutside, true);
+  });
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleKeydown);
+    window.removeEventListener('click', handleClickOutside, true);
+  });
 
   function toggleExpand(id) {
     expandedId = expandedId === id ? null : id;
@@ -149,6 +191,22 @@
     refresh();
   }
 
+  function confirmDelete(sub) {
+    deleteConfirmSub = sub;
+  }
+
+  async function executeDelete() {
+    if (!deleteConfirmSub) return;
+    try {
+      await deleteSub(deleteConfirmSub.id);
+      toasts.success($t('subs.delete') + ': ' + deleteConfirmSub.name);
+      refresh();
+    } catch (e) {
+      toasts.error(e.message || 'Delete failed');
+    }
+    deleteConfirmSub = null;
+  }
+
   function statusLabel(s) { return { active: $t('status.active'), paused: $t('status.paused'), cancelled: $t('status.cancelled') }[s] || s; }
   function statusClass(s) { return { active: 'status-active', paused: 'status-paused', cancelled: 'status-cancelled' }[s] || ''; }
 
@@ -206,7 +264,7 @@
         </button>
       {/each}
       <button class="pill pill-more" on:click={() => showAllCategories = !showAllCategories}>
-        {showAllCategories ? 'Less' : 'More'} {showAllCategories ? '▴' : '▾'}
+        {showAllCategories ? $t('subs.less') : $t('subs.more')} {showAllCategories ? '▴' : '▾'}
       </button>
     </div>
     {#if showAllCategories}
@@ -220,26 +278,55 @@
     {/if}
   {/if}
 
+  <!-- Status Pill Filters -->
+  <div class="pill-filters status-pills">
+    <button class="pill pill-status" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
+      <span class="status-dot dot-active"></span>{$t('status.active')}
+    </button>
+    <button class="pill pill-status" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
+      <span class="status-dot dot-paused"></span>{$t('status.paused')}
+    </button>
+    <button class="pill pill-status" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
+      <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}
+    </button>
+  </div>
+
   <!-- Search & Sort -->
   <div class="filters">
-    <input type="text" class="search-input" placeholder="Search... ( / )" bind:value={searchQuery} />
-    <select bind:value={filterStatus} on:change={refresh}>
-      <option value="">{$t('subs.all')}</option>
-      <option value="active">{$t('status.active')}</option>
-      <option value="paused">{$t('status.paused')}</option>
-      <option value="cancelled">{$t('status.cancelled')}</option>
-    </select>
-    <select bind:value={sortBy} on:change={refresh}>
-      <option value="">{$t('subs.sort_name')}</option>
-      <option value="price">{$t('subs.sort_price')}</option>
-      <option value="name">{$t('subs.sort_name')}</option>
-      <option value="next_renewal">{$t('subs.sort_renewal')}</option>
-    </select>
-    {#if sortBy}
-      <button class="btn-sort-dir" on:click={() => { sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'; refresh(); }} title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}>
-        {sortOrder === 'asc' ? '↑' : '↓'}
+    <div class="search-box" class:focused={searchFocused}>
+      <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="search-input" placeholder="{$t('subs.search_placeholder')}" bind:value={searchQuery} on:focus={() => searchFocused = true} on:blur={() => searchFocused = false} />
+      {#if !searchFocused && !searchQuery}
+        <kbd class="search-kbd">/</kbd>
+      {/if}
+    </div>
+    <div class="sort-dropdown" bind:this={sortDropdownEl}>
+      <button class="sort-trigger" on:click={() => sortDropdownOpen = !sortDropdownOpen}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h12M3 18h6"/></svg>
+        <span>{sortLabel}</span>
+        {#if sortBy}
+          <span class="sort-dir-arrow">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+        {/if}
+        <svg class="sort-chevron" class:open={sortDropdownOpen} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-    {/if}
+      {#if sortDropdownOpen}
+        <div class="sort-menu animate-fade-in">
+          {#each sortOptions as opt}
+            <button class="sort-option" class:active={sortBy === opt.value} on:click={() => selectSort(opt.value)}>
+              <span>{$t(opt.key)}</span>
+              <span class="sort-option-right">
+                {#if sortBy === opt.value}
+                  {#if opt.value !== ''}
+                    <span class="sort-option-dir">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  {/if}
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {/if}
+              </span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 
   <!-- Sub List -->
@@ -310,10 +397,13 @@
                   {:else if sub.start_date}
                     <span class="sub-date-label">{$t('subs.start_date')}: {sub.start_date}</span>
                   {/if}
-                  <span class="sub-actions">
-                    <button class="btn-icon" on:click|stopPropagation={() => openEdit(sub)} title="Edit"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                    <button class="btn-icon btn-delete" on:click|stopPropagation={() => openEdit(sub)} title="Delete"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                  </span>
+                  <button class="btn-edit-card" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    {$t('subs.edit')}
+                  </button>
+                  <button class="btn-delete-card" on:click|stopPropagation={() => confirmDelete(sub)} title="{$t('common.delete')}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -367,7 +457,7 @@
                 {#if sub.next_renewal}
                   <div class="detail-item">
                     <span class="detail-label">{$t('subs.next_renewal')}</span>
-                    <span class="detail-value">{sub.next_renewal} ({sub.remind_days}d reminder)</span>
+                    <span class="detail-value">{sub.next_renewal} ({$t('subs.reminder_days', { days: sub.remind_days })})</span>
                   </div>
                 {/if}
                 <div class="detail-item">
@@ -375,12 +465,9 @@
                   <span class="detail-value">{getCategoryIcon(sub.category)} {getCategoryName(sub.category, $t)}</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">Created</span>
+                  <span class="detail-label">{$t('subs.created_at')}</span>
                   <span class="detail-value">{sub.created_at}</span>
                 </div>
-              </div>
-              <div class="detail-actions">
-                <button class="btn-detail-edit" on:click={() => openEdit(sub)}>{$t('subs.edit')}</button>
               </div>
             </div>
           {/if}
@@ -392,6 +479,21 @@
 
 <!-- Editor Modal -->
 <EditSubModal bind:show={showEditor} sub={editingSub} on:saved={onModalSaved} on:deleted={onModalDeleted} on:close={() => showEditor = false} />
+
+<!-- Delete Confirm Dialog -->
+{#if deleteConfirmSub}
+  <div class="confirm-overlay" on:click={() => deleteConfirmSub = null} on:keydown={(e) => e.key === 'Escape' && (deleteConfirmSub = null)} role="dialog" tabindex="-1">
+    <div class="confirm-dialog animate-fade-in" on:click|stopPropagation role="document">
+      <div class="confirm-icon">🗑️</div>
+      <div class="confirm-title">{$t('subs.delete_confirm')}</div>
+      <div class="confirm-desc">{$t('subs.delete_confirm_desc', { name: deleteConfirmSub.name })}</div>
+      <div class="confirm-actions">
+        <button class="confirm-btn confirm-cancel" on:click={() => deleteConfirmSub = null}>{$t('common.cancel')}</button>
+        <button class="confirm-btn confirm-delete" on:click={executeDelete}>{$t('common.delete')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .subs-page { padding: 32px 0; }
@@ -486,23 +588,84 @@
   }
   .checkbox.checked { background: var(--primary); border-color: var(--primary); color: white; }
 
+  /* Status pills */
+  .status-pills { margin-bottom: 12px; }
+  .pill-status {
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-active { background: var(--success); }
+  .dot-paused { background: var(--warning); }
+  .dot-cancelled { background: var(--text-tertiary); }
+
   /* Filters */
-  .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .filters { display: flex; gap: 10px; margin-bottom: 20px; justify-content: flex-end; align-items: center; }
+
+  /* Search box */
+  .search-box {
+    position: relative; display: flex; align-items: center;
+    width: 240px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    transition: all var(--transition);
+  }
+  .search-box.focused { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+  .search-icon {
+    position: absolute; left: 10px; color: var(--text-tertiary); pointer-events: none;
+    flex-shrink: 0;
+  }
   .search-input {
-    flex: 1; min-width: 160px; padding: 9px 14px; background: var(--surface);
-    border: 1px solid var(--border); border-radius: var(--radius-sm);
-    color: var(--text-primary); font-size: 14px; transition: all var(--transition);
+    width: 100%; padding: 8px 32px 8px 32px; background: transparent; border: none;
+    color: var(--text-primary); font-size: 13px; outline: none;
   }
-  .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
-  .filters select {
-    padding: 9px 12px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; cursor: pointer;
+  .search-kbd {
+    position: absolute; right: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 4px;
+    font-family: 'DM Sans', monospace; font-size: 11px; font-weight: 600;
+    color: var(--text-tertiary); pointer-events: none;
+    line-height: 1;
   }
-  .btn-sort-dir {
-    padding: 8px 12px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); font-size: 16px; color: var(--text-primary);
+
+  /* Sort dropdown */
+  .sort-dropdown { position: relative; }
+  .sort-trigger {
+    display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-primary); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all var(--transition); white-space: nowrap;
   }
-  .btn-sort-dir:hover { background: var(--hover); }
+  .sort-trigger:hover { background: var(--hover); border-color: var(--text-tertiary); }
+  .sort-dir-arrow {
+    font-size: 12px; color: var(--primary); font-weight: 600;
+  }
+  .sort-chevron {
+    color: var(--text-tertiary); transition: transform 0.2s;
+  }
+  .sort-chevron.open { transform: rotate(180deg); }
+  .sort-menu {
+    position: absolute; top: calc(100% + 6px); right: 0;
+    min-width: 180px; padding: 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-lg);
+    z-index: 100;
+  }
+  .sort-option {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%; padding: 8px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text-secondary); background: none;
+    text-align: left; cursor: pointer; transition: all var(--transition);
+  }
+  .sort-option:hover { background: var(--hover); color: var(--text-primary); }
+  .sort-option.active { color: var(--primary); font-weight: 600; }
+  .sort-option-right {
+    display: flex; align-items: center; gap: 4px; color: var(--primary);
+  }
+  .sort-option-dir {
+    font-size: 12px; font-weight: 600; opacity: 0.7;
+  }
 
   .loading-state { padding: 20px 0; }
   .skeleton-list { display: flex; flex-direction: column; gap: 6px; }
@@ -609,16 +772,77 @@
   .renewal-badge-normal { background: var(--primary-tint); color: var(--primary); }
   .renewal-badge-far { background: var(--card); color: var(--text-secondary); }
 
-  /* Actions - visible on hover */
-  .sub-actions { display: flex; gap: 2px; opacity: 0; transition: opacity var(--transition); }
-  .sub-card:hover .sub-actions { opacity: 1; }
-  .btn-icon {
-    padding: 5px; border-radius: var(--radius-sm); color: var(--text-tertiary);
-    transition: all var(--transition);
+  /* Edit button - always visible */
+  .btn-edit-card {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary); background: var(--card);
+    border: 1px solid var(--border);
+    transition: all var(--transition); white-space: nowrap;
+    flex-shrink: 0;
   }
-  .btn-icon:hover { background: var(--hover); color: var(--text-primary); }
-  .btn-icon:active { transform: scale(0.9); }
-  .btn-delete:hover { color: var(--error); }
+  .btn-edit-card:hover {
+    color: var(--primary); border-color: var(--primary);
+    background: var(--primary-faint);
+  }
+  .btn-edit-card:active { transform: scale(0.95); }
+
+  /* Delete icon button */
+  .btn-delete-card {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: var(--radius-sm);
+    color: var(--text-tertiary); background: transparent;
+    border: 1px solid transparent;
+    transition: all var(--transition); flex-shrink: 0;
+  }
+  .btn-delete-card:hover {
+    color: var(--error); border-color: var(--error);
+    background: rgba(237, 63, 63, 0.08);
+  }
+  .btn-delete-card:active { transform: scale(0.9); }
+
+  /* Confirm dialog */
+  .confirm-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 300; padding: 20px;
+  }
+  .confirm-dialog {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 28px 24px 20px;
+    max-width: 360px; width: 100%;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+  }
+  .confirm-icon { font-size: 32px; margin-bottom: 12px; }
+  .confirm-title {
+    font-size: 16px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .confirm-desc {
+    font-size: 13px; color: var(--text-secondary);
+    margin-bottom: 20px; line-height: 1.5;
+  }
+  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+  .confirm-btn {
+    padding: 8px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500;
+    transition: all var(--transition); cursor: pointer;
+  }
+  .confirm-cancel {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .confirm-cancel:hover { background: var(--hover); }
+  .confirm-delete {
+    background: var(--error); border: 1px solid var(--error);
+    color: white;
+  }
+  .confirm-delete:hover { opacity: 0.9; }
+  .confirm-delete:active { transform: scale(0.97); }
 
   /* Chevron */
   .sub-chevron {
@@ -661,7 +885,6 @@
   }
 
   @media (max-width: 768px) {
-    .sub-actions { opacity: 1 !important; }
     .pill-filters { padding-bottom: 8px; }
 
     /* Hide duplicate title (top bar already shows it) */
@@ -675,6 +898,10 @@
     .header-actions { gap: 6px; }
     .btn-batch { padding: 7px 10px; font-size: 13px; }
     .btn-add { padding: 7px 12px; font-size: 13px; }
+
+    /* Filters: stack and stretch on mobile */
+    .filters { justify-content: stretch; }
+    .search-box { flex: 1; width: auto; }
 
     /* Card: name and price on separate rows */
     .sub-row-top {
@@ -712,5 +939,8 @@
     .sub-detail {
       padding: 14px 12px 14px 12px;
     }
+
+    /* Sort menu full width on mobile */
+    .sort-menu { min-width: 160px; }
   }
 </style>

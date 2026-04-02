@@ -135,11 +135,12 @@
     }
   }
 
-  /* Mobile: hamburger menu + top header */
+  /* Mobile: bottom tab bar + top title bar */
   @media (max-width: 768px) {
     .main-content {
       margin-left: 0;
-      padding-top: 52px;
+      padding-top: 48px;
+      padding-bottom: 60px;
     }
     .content-center {
       padding: 0 16px;

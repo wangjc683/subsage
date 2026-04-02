@@ -12,7 +12,6 @@
 
   let expanded = false;
   let isWide = false;
-  let drawerOpen = false;
 
   $: activePage = $currentPage;
 
@@ -26,19 +25,10 @@
     currentPage.set(id);
     window.location.hash = `#/${id}`;
     if (!isWide) expanded = false;
-    drawerOpen = false;
   }
 
   function toggleTheme() {
     theme.toggle();
-  }
-
-  function handleLogout() {
-    drawerOpen = false;
-    import('../stores/index.js').then(({ auth }) => {
-      auth.logout();
-      window.location.hash = '#/login';
-    });
   }
 
   function iconSvg(icon) {
@@ -57,7 +47,6 @@
     isWide = window.innerWidth > 1200;
     if (isWide) expanded = true;
     else expanded = false;
-    if (isWide) drawerOpen = false;
   }
 
   onMount(() => {
@@ -145,7 +134,7 @@
       <span class="nav-label">{$t(themeLabel)}</span>
     </button>
 
-    <button class="nav-item" on:click={handleLogout} title="Logout">
+    <button class="nav-item" on:click={() => { import('../stores/index.js').then(({ auth }) => { auth.logout(); window.location.hash = '#/login'; }); }} title="Logout">
       <span class="nav-icon">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -157,112 +146,48 @@
     </button>
 
     <div class="sidebar-version">
-      <span class="version-text">v0.1.1</span>
+      <span class="version-text">v0.2.0</span>
     </div>
   </div>
 </nav>
 
-<!-- ===== Mobile: Top Header Bar ===== -->
+<!-- ===== Mobile: Top Title Bar ===== -->
 <header class="mobile-header">
-  <button class="hamburger-btn" on:click={() => drawerOpen = !drawerOpen} aria-label="Menu">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
-    </svg>
-  </button>
   <span class="mobile-title">
-    {#each navItems as item}
+    {#each [...navItems, { id: 'settings', key: 'nav.settings' }] as item}
       {#if activePage === item.id}{$t(item.key)}{/if}
     {/each}
-    {#if activePage === 'settings'}{$t('nav.settings')}{/if}
   </span>
-  <div class="mobile-header-spacer"></div>
 </header>
 
-<!-- ===== Mobile Drawer ===== -->
-{#if drawerOpen}
-  <div class="drawer-overlay" on:click={() => drawerOpen = false}></div>
-{/if}
-<nav class="drawer" class:open={drawerOpen}>
-  <div class="drawer-header">
-    <div class="drawer-logo">
-      <svg viewBox="0 0 32 32" width="28" height="28">
-        <path d="M5 0h22c2.8 0 5 2.2 5 5v3c0 2.8-2.2 5-5 5h-9c-2.2 0-4 1.8-4 4H5c-2.8 0-5-2.2-5-5V5c0-2.8 2.2-5 5-5z" fill="var(--primary)"/>
-        <path d="M27 32H5c-2.8 0-5-2.2-5-5v-3c0-2.8 2.2-5 5-5h9c2.2 0 4-1.8 4-4h9c2.8 0 5 2.2 5 5v7c0 2.8-2.2 5-5 5z" fill="var(--primary)"/>
-      </svg>
-    </div>
-    <span class="drawer-brand">SubSage</span>
-    <button class="drawer-close" on:click={() => drawerOpen = false} aria-label="Close">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <line x1="18" y1="6" x2="6" y2="18"/>
-        <line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
-    </button>
-  </div>
-
-  <div class="drawer-nav">
-    {#each navItems as item}
-      <button
-        class="drawer-item"
-        class:active={activePage === item.id}
-        on:click={() => navigate(item.id)}
-      >
-        <span class="drawer-icon">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            {@html iconSvg(item.icon)}
-          </svg>
-        </span>
-        <span class="drawer-label">{$t(item.key)}</span>
-      </button>
-    {/each}
-  </div>
-
-  <div class="drawer-divider"></div>
-
-  <div class="drawer-footer">
+<!-- ===== Mobile: Bottom Tab Bar ===== -->
+<nav class="mobile-tab-bar">
+  {#each navItems as item}
     <button
-      class="drawer-item"
-      class:active={activePage === 'settings'}
-      on:click={() => navigate('settings')}
+      class="tab-item"
+      class:active={activePage === item.id}
+      on:click={() => navigate(item.id)}
     >
-      <span class="drawer-icon">
+      <span class="tab-icon">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          {@html iconSvg('settings')}
+          {@html iconSvg(item.icon)}
         </svg>
       </span>
-      <span class="drawer-label">{$t('nav.settings')}</span>
+      <span class="tab-label">{$t(item.key)}</span>
     </button>
-    <button class="drawer-item" on:click={toggleTheme}>
-      <span class="drawer-icon">
-        {#if $theme === 'light'}
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-          </svg>
-        {:else if $theme === 'dark'}
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-        {:else}
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-          </svg>
-        {/if}
-      </span>
-      <span class="drawer-label">{$t(themeLabel)}</span>
-    </button>
-
-    <button class="drawer-item logout" on:click={handleLogout}>
-      <span class="drawer-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </span>
-      <span class="drawer-label">{$t('nav.logout')}</span>
-    </button>
-
-    <div class="drawer-version">v0.1.1</div>
-  </div>
+  {/each}
+  <button
+    class="tab-item"
+    class:active={activePage === 'settings'}
+    on:click={() => navigate('settings')}
+  >
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        {@html iconSvg('settings')}
+      </svg>
+    </span>
+    <span class="tab-label">{$t('nav.settings')}</span>
+  </button>
 </nav>
 
 <style>
@@ -294,22 +219,32 @@
   }
 
   .logo-icon {
-    cursor: pointer; transition: transform var(--transition);
+    cursor: pointer; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     background: none; border: none; padding: 2px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
-  .logo-icon:hover { transform: scale(1.08); }
+  .logo-icon:hover {
+    transform: scale(1.12) rotate(-3deg);
+  }
+  .logo-icon:active {
+    transform: scale(0.95);
+  }
 
   .logo-icon svg {
     filter: drop-shadow(0 1px 3px var(--primary-glow));
+    transition: filter 0.3s ease;
+  }
+  .logo-icon:hover svg {
+    filter: drop-shadow(0 2px 8px var(--primary-glow)) drop-shadow(0 0 12px var(--primary-glow));
   }
 
   .logo-text {
     font-family: 'DM Sans', sans-serif;
     font-size: 15px; font-weight: 600; letter-spacing: -0.2px;
     color: var(--text-primary); cursor: pointer;
-    opacity: 1; transition: opacity var(--transition); white-space: nowrap;
+    opacity: 1; transition: opacity var(--transition), color 0.2s ease; white-space: nowrap;
   }
+  .logo-text:hover { color: var(--primary); }
   .sidebar:not(.expanded) .logo-text { opacity: 0; pointer-events: none; }
 
   .nav-items { display: flex; flex-direction: column; gap: 4px; width: 100%; }
@@ -360,191 +295,76 @@
 
   /* ===== Mobile: hidden by default ===== */
   .mobile-header { display: none; }
-  .drawer-overlay { display: none; }
-  .drawer { display: none; }
+  .mobile-tab-bar { display: none; }
 
   /* ===== Mobile Responsive ===== */
   @media (max-width: 768px) {
     .sidebar { display: none; }
 
-    /* Top header bar */
+    /* Top title bar */
     .mobile-header {
       display: flex;
       align-items: center;
+      justify-content: center;
       position: fixed;
       top: 0; left: 0; right: 0;
-      height: 52px;
+      height: 48px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       z-index: 100;
-      padding: 0 16px;
-      gap: 12px;
     }
-
-    .hamburger-btn {
-      padding: 6px;
-      color: var(--text-primary);
-      background: none;
-      border: none;
-      cursor: pointer;
-      border-radius: var(--radius-sm);
-      transition: background var(--transition);
-      -webkit-tap-highlight-color: transparent;
-      min-width: 44px;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .hamburger-btn:hover { background: var(--hover); }
 
     .mobile-title {
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 600;
       color: var(--text-primary);
     }
 
-    .mobile-header-spacer {
-      width: 44px;
-    }
-
-    /* Overlay */
-    .drawer-overlay {
-      display: block;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(4px);
-      z-index: 200;
-      animation: fadeInOverlay 0.2s ease;
-    }
-
-    @keyframes fadeInOverlay {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    /* Drawer panel */
-    .drawer {
+    /* Bottom tab bar */
+    .mobile-tab-bar {
       display: flex;
-      flex-direction: column;
       position: fixed;
-      top: 0; left: 0; bottom: 0;
-      width: 280px;
+      bottom: 0; left: 0; right: 0;
+      height: 56px;
       background: var(--surface);
-      z-index: 300;
-      transform: translateX(-100%);
-      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow-y: auto;
-    }
-    .drawer.open {
-      transform: translateX(0);
+      border-top: 1px solid var(--border);
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom, 0);
     }
 
-    .drawer-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 18px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .drawer-logo {
-      display: flex;
-      align-items: center;
-    }
-
-    .drawer-brand {
-      font-family: 'DM Sans', sans-serif;
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text-primary);
+    .tab-item {
       flex: 1;
-    }
-
-    .drawer-close {
-      padding: 6px;
-      color: var(--text-tertiary);
-      background: none;
-      border: none;
-      cursor: pointer;
-      border-radius: var(--radius-sm);
-      transition: all var(--transition);
-      min-width: 44px;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .drawer-close:hover {
-      color: var(--text-primary);
-      background: var(--hover);
-    }
-
-    .drawer-nav {
-      padding: 8px 10px;
-      display: flex;
-      flex-direction: column;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       gap: 2px;
-    }
-
-    .drawer-item {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 12px;
-      padding: 12px 14px;
-      border-radius: var(--radius);
-      color: var(--text-secondary);
-      font-size: 15px;
-      font-weight: 500;
-      width: 100%;
-      text-align: left;
-      transition: all var(--transition);
+      color: var(--text-tertiary);
+      background: none; border: none;
+      font-family: inherit;
+      transition: color 0.2s ease;
       -webkit-tap-highlight-color: transparent;
-      min-height: 44px;
+      position: relative;
     }
-    .drawer-item:hover { background: var(--hover); color: var(--text-primary); }
-    .drawer-item:active { transform: scale(0.97); }
-    .drawer-item.active { background: var(--primary-tint); color: var(--primary); }
+    .tab-item.active {
+      color: var(--primary);
+    }
+    .tab-item.active::after {
+      content: '';
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 24px; height: 2px;
+      background: var(--primary);
+      border-radius: 0 0 2px 2px;
+    }
+    .tab-item:active {
+      transform: scale(0.92);
+    }
 
-    .drawer-icon {
+    .tab-icon {
       display: flex; align-items: center; justify-content: center;
-      width: 20px; height: 20px; flex-shrink: 0;
+      width: 24px; height: 24px;
     }
-
-    .drawer-label {
-      flex: 1;
-    }
-
-    .drawer-item.logout {
-      color: var(--error);
-    }
-    .drawer-item.logout:hover {
-      background: rgba(237, 63, 63, 0.06);
-      color: var(--error);
-    }
-
-    .drawer-divider {
-      height: 1px;
-      background: var(--border);
-      margin: 8px 18px;
-      margin-top: auto;
-    }
-
-    .drawer-footer {
-      padding: 0 10px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .drawer-version {
-      text-align: center;
-      padding: 12px 0 0;
-      font-size: 11px;
-      color: var(--text-tertiary);
-      letter-spacing: 0.5px;
+    .tab-label {
+      font-size: 10px; font-weight: 500;
+      line-height: 1;
     }
   }
 </style>

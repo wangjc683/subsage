@@ -39,21 +39,25 @@ func (h *SubHandler) List(c echo.Context) error {
 		args = append(args, status)
 	}
 
+	// Determine sort direction
+	dir := "ASC"
+	if sortOrder == "desc" {
+		dir = "DESC"
+	}
+	statusOrder := "CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 WHEN 'cancelled' THEN 2 END"
+
 	// Default sort: active first, then by next_renewal
 	switch sortBy {
 	case "price":
-		query += " ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 WHEN 'cancelled' THEN 2 END, price"
-		if sortOrder == "asc" {
-			query += " ASC"
-		} else {
-			query += " DESC"
-		}
+		query += " ORDER BY " + statusOrder + ", price " + dir
 	case "name":
-		query += " ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 WHEN 'cancelled' THEN 2 END, name ASC"
+		query += " ORDER BY " + statusOrder + ", name " + dir
 	case "next_renewal":
-		query += " ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 WHEN 'cancelled' THEN 2 END, next_renewal ASC"
+		query += " ORDER BY " + statusOrder + ", CASE WHEN next_renewal = '' THEN 1 ELSE 0 END, next_renewal " + dir
+	case "created":
+		query += " ORDER BY " + statusOrder + ", created_at " + dir
 	default:
-		query += " ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 WHEN 'cancelled' THEN 2 END, CASE WHEN next_renewal = '' THEN 1 ELSE 0 END, next_renewal ASC"
+		query += " ORDER BY " + statusOrder + ", CASE WHEN next_renewal = '' THEN 1 ELSE 0 END, next_renewal ASC"
 	}
 
 	rows, err := h.db.Query(query, args...)
