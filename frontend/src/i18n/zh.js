@@ -124,7 +124,12 @@ export default {
   // --- Calendar ---
   'calendar.title': '日历',
   'calendar.today': '今天',
+  'calendar.today_label': '今天',
   'calendar.total_month': '当月合计',
+  'calendar.renewals': '项续费',
+  'calendar.due': '待付',
+  'calendar.in_days': '{days}天后',
+  'calendar.click_navigate': '点击跳转',
   'calendar.weekdays': ['一', '二', '三', '四', '五', '六', '日'],
   'calendar.no_subs': '当日无订阅',
   'calendar.no_renewals_month': '本月没有续费 🎉',

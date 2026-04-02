@@ -124,7 +124,12 @@ export default {
   // --- Calendar ---
   'calendar.title': 'Calendar',
   'calendar.today': 'Today',
+  'calendar.today_label': 'today',
   'calendar.total_month': 'Monthly Total',
+  'calendar.renewals': 'renewals',
+  'calendar.due': 'due',
+  'calendar.in_days': 'in {days}d',
+  'calendar.click_navigate': 'Click to go',
   'calendar.weekdays': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   'calendar.no_subs': 'No subscriptions on this day',
   'calendar.no_renewals_month': 'No renewals this month 🎉',
