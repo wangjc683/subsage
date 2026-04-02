@@ -146,7 +146,7 @@
     </button>
 
     <div class="sidebar-version">
-      <span class="version-text">v0.2.0</span>
+      <span class="version-text">v0.2.1</span>
     </div>
   </div>
 </nav>

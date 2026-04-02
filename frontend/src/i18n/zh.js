@@ -9,7 +9,7 @@ export default {
   'nav.light_mode': '浅色模式',
   'nav.dark_mode': '深色模式',
   'nav.logout': '退出',
-  'nav.version': 'v0.2.0',
+  'nav.version': 'v0.2.1',
 
   // --- Login ---
   'login.tagline': 'AI Agent 原生的订阅管理',
