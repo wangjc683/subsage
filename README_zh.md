@@ -85,9 +85,15 @@ SubSage 接入 Agent 后，管订阅就变成了聊天：
 |---------|---------|
 | ![Calendar](docs/screenshots/calendar.png) | ![Edit Modal](docs/screenshots/edit-modal.png) |
 
-| Agent 对接 |
-|-----------|
-| ![Agent](docs/screenshots/agent.png) |
+| Agent 对接 | |
+|-----------|---|
+| ![Agent](docs/screenshots/agent.png) | |
+
+### 🌙 深色模式
+
+| 总览 | 订阅 |
+|------|------|
+| ![Overview Dark](docs/screenshots/overview-dark.png) | ![Subscriptions Dark](docs/screenshots/subscriptions-dark.png) |
 
 ---
 

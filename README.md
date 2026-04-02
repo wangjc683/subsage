@@ -85,9 +85,15 @@ If your Agent supports vision, you don't even need to type — just show it a sc
 |----------|------------|
 | ![Calendar](docs/screenshots/calendar.png) | ![Edit Modal](docs/screenshots/edit-modal.png) |
 
-| Agent Setup |
-|-------------|
-| ![Agent](docs/screenshots/agent.png) |
+| Agent Setup | |
+|-------------|---|
+| ![Agent](docs/screenshots/agent.png) | |
+
+### 🌙 Dark Mode
+
+| Overview | Subscriptions |
+|----------|---------------|
+| ![Overview Dark](docs/screenshots/overview-dark.png) | ![Subscriptions Dark](docs/screenshots/subscriptions-dark.png) |
 
 ---
 
