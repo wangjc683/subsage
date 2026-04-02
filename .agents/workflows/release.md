@@ -10,6 +10,7 @@ description: How to create a new release for SubSage
 - All changes committed and pushed to `main`
 - `npm run build` passes in `frontend/`
 - Changes locally verified (via `go run .` in `backend/`)
+- Docker Hub logged in (`docker login -u wangjc683`)
 
 ## Steps
 
@@ -22,7 +23,7 @@ description: How to create a new release for SubSage
 Replace all `vOLD` with `vNEW` in these files:
 - `frontend/src/i18n/en.js` — `nav.version`
 - `frontend/src/i18n/zh.js` — `nav.version`
-- `frontend/src/components/Sidebar.svelte` — version text (2 places: desktop + drawer)
+- `frontend/src/components/Sidebar.svelte` — version text in desktop sidebar
 - `frontend/src/pages/Settings.svelte` — about section
 - `frontend/src/pages/Login.svelte` — login page footer
 - `docs/architecture.md` — current version line
@@ -63,6 +64,33 @@ Write release notes to a temp file, then:
 ```bash
 gh release create vNEW --title "SubSage vNEW — One-Line Summary" --notes-file .release-notes.md
 rm .release-notes.md
+```
+
+### 8. Cross-compile binaries and upload to Release
+Build for all 4 platforms and attach to the GitHub Release:
+```bash
+mkdir -p dist
+GOOS=linux  GOARCH=amd64 CGO_ENABLED=0 go build -C backend -ldflags="-s -w" -trimpath -o ../dist/subsage-linux-amd64 .
+GOOS=linux  GOARCH=arm64 CGO_ENABLED=0 go build -C backend -ldflags="-s -w" -trimpath -o ../dist/subsage-linux-arm64 .
+GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -C backend -ldflags="-s -w" -trimpath -o ../dist/subsage-darwin-amd64 .
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -C backend -ldflags="-s -w" -trimpath -o ../dist/subsage-darwin-arm64 .
+
+gh release upload vNEW dist/subsage-linux-amd64 dist/subsage-linux-arm64 dist/subsage-darwin-amd64 dist/subsage-darwin-arm64 --clobber
+```
+
+### 9. Build and push Docker image to Docker Hub
+Build multi-arch image and push with version tag + `latest`:
+```bash
+docker buildx create --name subsage-builder --use 2>/dev/null; docker buildx inspect --bootstrap
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t wangjc683/subsage:vNEW \
+  -t wangjc683/subsage:latest \
+  --push .
+```
+
+### 10. Clean up
+```bash
+rm -rf dist
 ```
 
 ## Release Notes Template
