@@ -151,9 +151,16 @@ docker restart subsage
 
 ## 🔄 升级
 
-### 标准升级
+SubSage 的数据存储在 SQLite 数据库中，升级不会丢失数据。
 
-SubSage 的数据存储在 Docker 卷挂载的 SQLite 数据库中，升级不会丢失数据：
+### 脚本安装升级
+
+```bash
+# 重新运行安装脚本 — 自动下载最新版本
+curl -fsSL https://raw.githubusercontent.com/wangjc683/subsage/main/install.sh | bash
+```
+
+### Docker 升级
 
 ```bash
 # 1. 备份（推荐）
@@ -164,8 +171,6 @@ docker pull wangjc683/subsage:latest
 docker stop subsage && docker rm subsage
 docker run -d --name subsage -p 8321:8321 -v subsage-data:/data wangjc683/subsage
 ```
-
-数据、设置和 API Token 会自动保留。
 
 ### 用 Agent 升级
 

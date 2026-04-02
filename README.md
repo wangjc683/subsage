@@ -151,9 +151,16 @@ docker restart subsage
 
 ## 🔄 Upgrade
 
-### Standard Upgrade
+SubSage stores all data in a SQLite database. Upgrading is safe — your data is always preserved.
 
-SubSage stores all data in a SQLite database mounted as a Docker volume. Upgrading is safe:
+### Script Install Upgrade
+
+```bash
+# Re-run the install script — it downloads the latest version automatically
+curl -fsSL https://raw.githubusercontent.com/wangjc683/subsage/main/install.sh | bash
+```
+
+### Docker Upgrade
 
 ```bash
 # 1. Backup (recommended)
@@ -164,8 +171,6 @@ docker pull wangjc683/subsage:latest
 docker stop subsage && docker rm subsage
 docker run -d --name subsage -p 8321:8321 -v subsage-data:/data wangjc683/subsage
 ```
-
-Your data, settings, and API tokens are preserved automatically.
 
 ### Agent-Assisted Upgrade
 
