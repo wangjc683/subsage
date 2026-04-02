@@ -91,7 +91,15 @@ SubSage 接入 Agent 后，管订阅就变成了聊天：
 
 ## 🚀 快速开始
 
-### Docker 部署（推荐）
+### 一键安装（无需 Docker）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wangjc683/subsage/main/install.sh | bash
+```
+
+自动检测操作系统（Linux/macOS）和架构（amd64/arm64），下载二进制文件并注册系统服务。
+
+### Docker 部署（推荐用于服务器）
 
 **一行命令：**
 

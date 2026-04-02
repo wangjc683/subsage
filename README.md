@@ -91,7 +91,15 @@ If your Agent supports vision, you don't even need to type — just show it a sc
 
 ## 🚀 Quick Start
 
-### Docker (Recommended)
+### One-Line Install (no Docker needed)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wangjc683/subsage/main/install.sh | bash
+```
+
+Auto-detects your OS (Linux/macOS) and architecture (amd64/arm64), downloads the binary, and registers a system service.
+
+### Docker (Recommended for servers)
 
 **One command:**
 
