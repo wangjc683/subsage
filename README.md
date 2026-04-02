@@ -12,9 +12,9 @@ SubSage is a self-hosted subscription tracker that works **with your AI Agent**.
 
 Have a coding Agent like Cursor, Cline, or Windsurf? Copy this and send it:
 
-> Clone https://github.com/wangjc683/subsage and deploy it with Docker Compose. After it starts, open http://localhost:8321 in my browser.
+> Pull wangjc683/subsage from Docker Hub and run it with `docker run -d -p 8321:8321 -v subsage-data:/data wangjc683/subsage`. After it starts, open http://localhost:8321 in my browser.
 
-That's it. Your Agent handles `git clone`, `docker compose up -d`, and opens the app. Zero manual commands.
+That's it. Your Agent handles `docker run` and opens the app. Zero manual commands.
 
 Want public access? Add a reverse proxy (Nginx or Caddy) with HTTPS.
 
@@ -93,13 +93,22 @@ If your Agent supports vision, you don't even need to type — just show it a sc
 
 ### Docker (Recommended)
 
+**One command:**
+
 ```bash
-git clone https://github.com/wangjc683/subsage.git
-cd subsage
+docker run -d --name subsage -p 8321:8321 -v subsage-data:/data wangjc683/subsage
+```
+
+**Or with Docker Compose:**
+
+```bash
+curl -O https://raw.githubusercontent.com/wangjc683/subsage/main/docker-compose.yml
 docker compose up -d
 ```
 
 Open [http://localhost:8321](http://localhost:8321) — first visit will prompt you to create an admin account.
+
+> Supports `linux/amd64` and `linux/arm64` (NAS, Raspberry Pi, Apple Silicon).
 
 ### Manual Setup
 
@@ -140,11 +149,10 @@ SubSage stores all data in a SQLite database mounted as a Docker volume. Upgradi
 # 1. Backup (recommended)
 docker cp subsage:/data/sage.db ./sage-backup-$(date +%Y%m%d).db
 
-# 2. Pull & restart
-cd subsage
-git pull
-docker compose down
-docker compose up -d --build
+# 2. Pull latest image & restart
+docker pull wangjc683/subsage:latest
+docker stop subsage && docker rm subsage
+docker run -d --name subsage -p 8321:8321 -v subsage-data:/data wangjc683/subsage
 ```
 
 Your data, settings, and API tokens are preserved automatically.
