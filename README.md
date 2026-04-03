@@ -95,6 +95,12 @@ If your Agent supports vision, you don't even need to type — just show it a sc
 |----------|---------------|
 | ![Overview Dark](docs/screenshots/overview-dark.png) | ![Subscriptions Dark](docs/screenshots/subscriptions-dark.png) |
 
+### 📱 Mobile
+
+| Overview | Subscriptions |
+|----------|---------------|
+| ![Overview Mobile](docs/screenshots/overview-mobile.png) | ![Subscriptions Mobile](docs/screenshots/subscriptions-mobile.png) |
+
 ---
 
 ## 🚀 Quick Start
