@@ -190,8 +190,9 @@ See the full changelog at [GitHub Releases](https://github.com/wangjc683/subsage
 
 | Version | Highlights |
 |---------|-----------|
-| v0.2.0 | Mobile bottom tab bar, theme/logout in Settings, Notion-style dark mode, breathing micro-interactions |
+| v0.2.2 | List/grid view toggle, modal form redesign (segmented controls, styled selects), overview layout merge, dynamic daily cost hints, a11y cleanup |
 | v0.2.1 | Calendar redesign (inline details, stats bar, smart navigation), Settings theme dropdown fix |
+| v0.2.0 | Mobile bottom tab bar, theme/logout in Settings, Notion-style dark mode, breathing micro-interactions |
 | v0.1.1 | Bug fixes: calendar refresh, theme label, category names; Mobile UX polish |
 | v0.1.0 | Shared edit modal, Calendar UX overhaul, Chart.js fix, i18n polish |
 | v0.0.1 | Initial release — full CRUD, Agent API, multi-currency, i18n |

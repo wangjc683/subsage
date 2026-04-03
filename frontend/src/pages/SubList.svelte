@@ -20,6 +20,15 @@
   let sortDropdownOpen = false;
   let sortDropdownEl;
   let deleteConfirmSub = null;
+  let showCategorySheet = false;
+  let viewMode = 'list';
+
+  // Load view mode preference from localStorage
+  try { viewMode = localStorage.getItem('sage_view_mode') || 'list'; } catch (_) {}
+  function setViewMode(mode) {
+    viewMode = mode;
+    try { localStorage.setItem('sage_view_mode', mode); } catch (_) {}
+  }
 
   const sortOptions = [
     { value: '', key: 'subs.sort_default' },
@@ -278,54 +287,90 @@
     {/if}
   {/if}
 
-  <!-- Status Pill Filters -->
-  <div class="pill-filters status-pills">
-    <button class="pill pill-status" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
-      <span class="status-dot dot-active"></span>{$t('status.active')}
-    </button>
-    <button class="pill pill-status" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
-      <span class="status-dot dot-paused"></span>{$t('status.paused')}
-    </button>
-    <button class="pill pill-status" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
-      <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}
-    </button>
+  <!-- Toolbar: Status filters + Search & Sort -->
+  <div class="toolbar">
+    <!-- Status Pill Filters -->
+    <div class="pill-filters status-pills">
+      <button class="pill pill-status" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
+        <span class="status-dot dot-active"></span>{$t('status.active')}
+      </button>
+      <button class="pill pill-status" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
+        <span class="status-dot dot-paused"></span>{$t('status.paused')}
+      </button>
+      <button class="pill pill-status" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
+        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}
+      </button>
+    </div>
+
+    <!-- Search & Sort -->
+    <div class="filters">
+      <div class="search-box" class:focused={searchFocused}>
+        <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" placeholder="{$t('subs.search_placeholder')}" bind:value={searchQuery} on:focus={() => searchFocused = true} on:blur={() => searchFocused = false} />
+        {#if !searchFocused && !searchQuery}
+          <kbd class="search-kbd">/</kbd>
+        {/if}
+      </div>
+      <div class="sort-dropdown" bind:this={sortDropdownEl}>
+        <button class="sort-trigger" on:click={() => sortDropdownOpen = !sortDropdownOpen}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h12M3 18h6"/></svg>
+          <span class="sort-label">{sortLabel}</span>
+          {#if sortBy}
+            <span class="sort-dir-arrow">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+          {/if}
+          <svg class="sort-chevron" class:open={sortDropdownOpen} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        {#if sortDropdownOpen}
+          <div class="sort-menu animate-fade-in">
+            {#each sortOptions as opt}
+              <button class="sort-option" class:active={sortBy === opt.value} on:click={() => selectSort(opt.value)}>
+                <span>{$t(opt.key)}</span>
+                <span class="sort-option-right">
+                  {#if sortBy === opt.value}
+                    {#if opt.value !== ''}
+                      <span class="sort-option-dir">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    {/if}
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  {/if}
+                </span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn" class:active={viewMode === 'list'} on:click={() => setViewMode('list')} title="List view">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <button class="view-btn" class:active={viewMode === 'grid'} on:click={() => setViewMode('grid')} title="Grid view">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+      </div>
+    </div>
   </div>
 
-  <!-- Search & Sort -->
-  <div class="filters">
-    <div class="search-box" class:focused={searchFocused}>
-      <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" class="search-input" placeholder="{$t('subs.search_placeholder')}" bind:value={searchQuery} on:focus={() => searchFocused = true} on:blur={() => searchFocused = false} />
-      {#if !searchFocused && !searchQuery}
-        <kbd class="search-kbd">/</kbd>
+  <!-- Mobile: Compact filter row (category chip + status pills) -->
+  <div class="mobile-filter-row">
+    <button class="category-chip" class:has-filter={filterCategory !== ''} on:click={() => showCategorySheet = true}>
+      {#if filterCategory}
+        <span class="chip-icon">{getCategoryIcon(filterCategory)}</span>
+        <span class="chip-text">{getCategoryName(filterCategory, $t)}</span>
+      {:else}
+        <span class="chip-icon">📂</span>
+        <span class="chip-text">{$t('subs.all')}</span>
       {/if}
-    </div>
-    <div class="sort-dropdown" bind:this={sortDropdownEl}>
-      <button class="sort-trigger" on:click={() => sortDropdownOpen = !sortDropdownOpen}>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h12M3 18h6"/></svg>
-        <span>{sortLabel}</span>
-        {#if sortBy}
-          <span class="sort-dir-arrow">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-        {/if}
-        <svg class="sort-chevron" class:open={sortDropdownOpen} viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg class="chip-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="mobile-status-pills">
+      <button class="pill-sm" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
+        <span class="status-dot dot-active"></span>{$t('status.active')}
       </button>
-      {#if sortDropdownOpen}
-        <div class="sort-menu animate-fade-in">
-          {#each sortOptions as opt}
-            <button class="sort-option" class:active={sortBy === opt.value} on:click={() => selectSort(opt.value)}>
-              <span>{$t(opt.key)}</span>
-              <span class="sort-option-right">
-                {#if sortBy === opt.value}
-                  {#if opt.value !== ''}
-                    <span class="sort-option-dir">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                  {/if}
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                {/if}
-              </span>
-            </button>
-          {/each}
-        </div>
-      {/if}
+      <button class="pill-sm" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
+        <span class="status-dot dot-paused"></span>{$t('status.paused')}
+      </button>
+      <button class="pill-sm" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
+        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}
+      </button>
     </div>
   </div>
 
@@ -351,7 +396,7 @@
       {/if}
     </div>
   {:else}
-    <div class="sub-list">
+    <div class="sub-list" class:grid-view={viewMode === 'grid'}>
       {#each filteredSubs as sub, i (sub.id)}
         {@const d = daysUntil(sub.next_renewal)}
         {@const badge = renewalBadge(d)}
@@ -360,9 +405,9 @@
         <div class="sub-wrapper animate-fade-in" style="animation-delay: {Math.min(i * 40, 400)}ms">
           <div class="sub-card" class:expanded={isExpanded} on:click={() => toggleExpand(sub.id)} on:keydown={(e) => e.key === 'Enter' && toggleExpand(sub.id)} role="button" tabindex="0">
             {#if batchMode}
-              <span class="btn-check" on:click|stopPropagation={() => toggleSelect(sub.id)}>
+              <button type="button" class="btn-check" on:click|stopPropagation={() => toggleSelect(sub.id)}>
                 <span class="checkbox" class:checked={selectedIds.has(sub.id)}>✓</span>
-              </span>
+              </button>
             {/if}
             <div class="sub-icon-box" style="background: {catColor.bg}; color: {catColor.text}">
               <span class="sub-icon-emoji">{getCategoryIcon(sub.category)}</span>
@@ -482,14 +527,44 @@
 
 <!-- Delete Confirm Dialog -->
 {#if deleteConfirmSub}
-  <div class="confirm-overlay" on:click={() => deleteConfirmSub = null} on:keydown={(e) => e.key === 'Escape' && (deleteConfirmSub = null)} role="dialog" tabindex="-1">
-    <div class="confirm-dialog animate-fade-in" on:click|stopPropagation role="document">
+  <div class="confirm-overlay" on:click={() => deleteConfirmSub = null} on:keydown={(e) => e.key === 'Escape' && (deleteConfirmSub = null)} role="presentation" tabindex="-1">
+    <div class="confirm-dialog animate-fade-in" role="dialog" aria-modal="true">
       <div class="confirm-icon">🗑️</div>
       <div class="confirm-title">{$t('subs.delete_confirm')}</div>
       <div class="confirm-desc">{$t('subs.delete_confirm_desc', { name: deleteConfirmSub.name })}</div>
       <div class="confirm-actions">
         <button class="confirm-btn confirm-cancel" on:click={() => deleteConfirmSub = null}>{$t('common.cancel')}</button>
         <button class="confirm-btn confirm-delete" on:click={executeDelete}>{$t('common.delete')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Category Bottom Sheet (mobile) -->
+{#if showCategorySheet}
+  <div class="sheet-backdrop" on:click={() => showCategorySheet = false} on:keydown={(e) => e.key === 'Escape' && (showCategorySheet = false)} role="presentation" tabindex="-1">
+    <div class="sheet-panel animate-sheet-up" role="dialog" aria-modal="true">
+      <div class="sheet-handle"></div>
+      <h3 class="sheet-title">{$t('subs.category')}</h3>
+      <div class="sheet-grid">
+        <button class="sheet-item" class:active={filterCategory === ''} on:click={() => { filterCategory = ''; refresh(); showCategorySheet = false; }}>
+          <span class="sheet-item-icon">📋</span>
+          <span class="sheet-item-name">{$t('subs.all')}</span>
+          <span class="sheet-item-count">{($subs || []).length}</span>
+        </button>
+        {#each usedCategories as cat}
+          <button class="sheet-item" class:active={filterCategory === cat.id} on:click={() => { setCategoryFilter(cat.id); showCategorySheet = false; }}>
+            <span class="sheet-item-icon">{cat.icon}</span>
+            <span class="sheet-item-name">{getCategoryName(cat.id, $t)}</span>
+            <span class="sheet-item-count">{cat.count}</span>
+          </button>
+        {/each}
+        {#each categories.filter(c => !usedCategories.find(u => u.id === c.id)) as cat}
+          <button class="sheet-item sheet-item-empty" class:active={filterCategory === cat.id} on:click={() => { setCategoryFilter(cat.id); showCategorySheet = false; }}>
+            <span class="sheet-item-icon">{cat.icon}</span>
+            <span class="sheet-item-name">{getCategoryName(cat.id, $t)}</span>
+          </button>
+        {/each}
       </div>
     </div>
   </div>
@@ -589,7 +664,7 @@
   .checkbox.checked { background: var(--primary); border-color: var(--primary); color: white; }
 
   /* Status pills */
-  .status-pills { margin-bottom: 12px; }
+  .status-pills { margin-bottom: 0; }
   .pill-status {
     display: inline-flex; align-items: center; gap: 5px;
   }
@@ -600,13 +675,37 @@
   .dot-paused { background: var(--warning); }
   .dot-cancelled { background: var(--text-tertiary); }
 
+  /* Toolbar: status pills + search/sort in one row */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 20px;
+  }
+
   /* Filters */
-  .filters { display: flex; gap: 10px; margin-bottom: 20px; justify-content: flex-end; align-items: center; }
+  .filters { display: flex; gap: 10px; align-items: center; }
+
+  /* View toggle */
+  .view-toggle {
+    display: flex; align-items: center;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .view-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px;
+    color: var(--text-tertiary);
+    transition: all var(--transition);
+    border-right: 1px solid var(--border);
+  }
+  .view-btn:last-child { border-right: none; }
+  .view-btn:hover { color: var(--text-primary); background: var(--hover); }
+  .view-btn.active { color: var(--primary); background: var(--primary-faint); }
+  .view-btn:active { transform: scale(0.92); }
 
   /* Search box */
   .search-box {
     position: relative; display: flex; align-items: center;
-    width: 240px;
+    width: 240px; flex-shrink: 0;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     transition: all var(--transition);
   }
@@ -675,12 +774,32 @@
   .empty-icon { font-size: 40px; margin-bottom: 12px; }
   .empty-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
   .empty-desc { font-size: 13px; color: var(--text-secondary); }
-  .empty-desc kbd {
-    display: inline-block; padding: 2px 6px; background: var(--card); border: 1px solid var(--border);
-    border-radius: 4px; font-family: 'DM Sans', monospace; font-size: 12px; font-weight: 600;
-  }
 
   .sub-list { display: flex; flex-direction: column; gap: 8px; }
+  .sub-list.grid-view {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  /* Grid view card adjustments */
+  .sub-list.grid-view .sub-card {
+    gap: 12px; padding: 14px 14px;
+  }
+  .sub-list.grid-view .sub-name {
+    font-size: 14px;
+  }
+  .sub-list.grid-view .sub-price {
+    font-size: 16px;
+  }
+  .sub-list.grid-view .sub-meta {
+    font-size: 11px;
+  }
+  .sub-list.grid-view .sub-icon-box {
+    width: 38px; height: 38px;
+  }
+  .sub-list.grid-view .sub-icon-emoji {
+    font-size: 18px;
+  }
   .sub-wrapper { display: flex; flex-direction: column; }
 
   .sub-card {
@@ -884,8 +1003,111 @@
     box-shadow: var(--shadow-lg);
   }
 
+  /* ===== Mobile Filter Row (hidden on desktop) ===== */
+  .mobile-filter-row { display: none; }
+
+  .category-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    font-size: 13px; font-weight: 500; color: var(--text-primary);
+    transition: all var(--transition); flex-shrink: 0; white-space: nowrap;
+  }
+  .category-chip:active { transform: scale(0.96); }
+  .category-chip.has-filter {
+    background: var(--primary-tint); border-color: var(--primary); color: var(--primary);
+  }
+  .chip-icon { font-size: 14px; line-height: 1; }
+  .chip-text { line-height: 1; }
+  .chip-chevron { color: var(--text-tertiary); flex-shrink: 0; }
+  .category-chip.has-filter .chip-chevron { color: var(--primary); }
+
+  .mobile-status-pills {
+    display: flex; gap: 6px; flex: 1; justify-content: flex-end;
+  }
+  .pill-sm {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 10px; border-radius: 16px;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+    background: var(--card); border: 1px solid var(--border); color: var(--text-secondary);
+    transition: all var(--transition);
+  }
+  .pill-sm.active {
+    background: var(--primary-tint); border-color: var(--primary); color: var(--primary);
+  }
+  .pill-sm:active { transform: scale(0.95); }
+
+  /* ===== Category Bottom Sheet ===== */
+  .sheet-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 250;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .sheet-panel {
+    width: 100%; max-width: 500px; max-height: 70vh;
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+    padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  }
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: var(--border); border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .sheet-title {
+    font-size: 16px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+  .sheet-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  }
+  .sheet-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 14px; color: var(--text-primary);
+    transition: all var(--transition); text-align: left;
+  }
+  .sheet-item:active { transform: scale(0.97); }
+  .sheet-item.active {
+    background: var(--primary-tint); border-color: var(--primary); color: var(--primary);
+  }
+  .sheet-item-icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
+  .sheet-item-name { flex: 1; font-weight: 500; }
+  .sheet-item-count {
+    font-size: 12px; color: var(--text-tertiary);
+    background: var(--surface); padding: 2px 7px; border-radius: 10px;
+    font-weight: 500;
+  }
+  .sheet-item.active .sheet-item-count { color: var(--primary); background: rgba(61, 124, 95, 0.08); }
+  .sheet-item-empty { opacity: 0.5; }
+  .sheet-item-empty:active { opacity: 0.8; }
+
+  @keyframes sheetUp {
+    from { transform: translateY(100%); opacity: 0.5; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .animate-sheet-up {
+    animation: sheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
   @media (max-width: 768px) {
-    .pill-filters { padding-bottom: 8px; }
+    /* Hide desktop pill filters, show mobile filter row */
+    .pill-filters { display: none; }
+    .status-pills { display: none; }
+    .toolbar { margin-bottom: 12px; }
+    .view-toggle { display: none; }
+    .sub-list.grid-view {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .mobile-filter-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px;
+    }
 
     /* Hide duplicate title (top bar already shows it) */
     .page-header h1 { display: none; }
@@ -899,9 +1121,12 @@
     .btn-batch { padding: 7px 10px; font-size: 13px; }
     .btn-add { padding: 7px 12px; font-size: 13px; }
 
-    /* Filters: stack and stretch on mobile */
-    .filters { justify-content: stretch; }
-    .search-box { flex: 1; width: auto; }
+    /* Filters: single row on mobile */
+    .filters { flex-wrap: nowrap; }
+    .search-box { flex: 1 1 0; min-width: 0; width: auto; }
+    .sort-dropdown { flex-shrink: 0; }
+    .sort-label { display: none; }
+    .sort-trigger { gap: 4px; padding: 8px 10px; }
 
     /* Card: name and price on separate rows */
     .sub-row-top {

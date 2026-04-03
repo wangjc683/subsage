@@ -344,7 +344,7 @@
     <div class="about-info">
       <div class="about-row">
         <span class="about-key">{$t('settings.version')}</span>
-        <span class="about-val">v0.2.1</span>
+        <span class="about-val">v0.2.2</span>
       </div>
       <div class="about-row">
         <span class="about-key">{$t('settings.tech_stack')}</span>

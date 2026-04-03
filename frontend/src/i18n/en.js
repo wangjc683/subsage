@@ -9,7 +9,7 @@ export default {
   'nav.light_mode': 'Light Mode',
   'nav.dark_mode': 'Dark Mode',
   'nav.logout': 'Logout',
-  'nav.version': 'v0.2.1',
+  'nav.version': 'v0.2.2',
 
   // --- Login ---
   'login.tagline': 'AI Agent-Native Subscription Management',

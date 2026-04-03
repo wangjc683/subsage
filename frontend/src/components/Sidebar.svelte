@@ -146,7 +146,7 @@
     </button>
 
     <div class="sidebar-version">
-      <span class="version-text">v0.2.1</span>
+      <span class="version-text">v0.2.2</span>
     </div>
   </div>
 </nav>
@@ -169,7 +169,7 @@
       on:click={() => navigate(item.id)}
     >
       <span class="tab-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           {@html iconSvg(item.icon)}
         </svg>
       </span>
@@ -182,7 +182,7 @@
     on:click={() => navigate('settings')}
   >
     <span class="tab-icon">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         {@html iconSvg('settings')}
       </svg>
     </span>
@@ -325,18 +325,19 @@
       display: flex;
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      height: 56px;
+      height: 64px;
       background: var(--surface);
       border-top: 1px solid var(--border);
       z-index: 100;
-      padding-bottom: env(safe-area-inset-bottom, 0);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
     }
 
     .tab-item {
       flex: 1;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 2px;
+      gap: 4px;
+      padding: 6px 0;
       color: var(--text-tertiary);
       background: none; border: none;
       font-family: inherit;
@@ -350,7 +351,7 @@
     .tab-item.active::after {
       content: '';
       position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-      width: 24px; height: 2px;
+      width: 32px; height: 2px;
       background: var(--primary);
       border-radius: 0 0 2px 2px;
     }
@@ -360,10 +361,10 @@
 
     .tab-icon {
       display: flex; align-items: center; justify-content: center;
-      width: 24px; height: 24px;
+      width: 28px; height: 28px;
     }
     .tab-label {
-      font-size: 10px; font-weight: 500;
+      font-size: 11px; font-weight: 500;
       line-height: 1;
     }
   }

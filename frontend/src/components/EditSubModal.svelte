@@ -130,8 +130,8 @@
 </script>
 
 {#if show}
-  <div class="modal-overlay" on:click|self={close} on:keydown={onKeydown} role="dialog" aria-modal="true">
-    <div class="modal animate-scale-in" on:keydown={onKeydown}>
+  <div class="modal-overlay" on:click|self={close} on:keydown={onKeydown} role="presentation" tabindex="-1">
+    <div class="modal animate-scale-in" role="dialog" aria-modal="true">
       <div class="modal-header">
         <h2>{editing ? $t('subs.edit') : $t('subs.add')}</h2>
         <button class="btn-close" on:click={close}>✕</button>
@@ -142,10 +142,10 @@
         <div class="form-section">
           <div class="form-section-label">{$t('subs.name')}</div>
           <div class="form-row">
-            <div class="form-group flex-1"><label>{$t('subs.name')} *</label><input type="text" bind:value={form.name} placeholder={$t('subs.name_placeholder')} /></div>
+            <div class="form-group flex-1"><label for="field-name">{$t('subs.name')} *</label><input id="field-name" type="text" bind:value={form.name} placeholder={$t('subs.name_placeholder')} /></div>
             <div class="form-group form-auto">
-              <label>{$t('subs.category')}</label>
-              <select bind:value={form.category} on:change={() => { if (form.category !== '__custom__') customCategoryInput = ''; }}>
+              <label for="field-category">{$t('subs.category')}</label>
+              <select id="field-category" bind:value={form.category} on:change={() => { if (form.category !== '__custom__') customCategoryInput = ''; }}>
                 {#each categories as cat}<option value={cat.id}>{cat.icon} {getCategoryName(cat.id, $t)}</option>{/each}
                 <option disabled>──────</option>
                 <option value="__custom__">✏️ Custom...</option>
@@ -154,8 +154,8 @@
           </div>
           {#if isCustomCategory}
             <div class="form-group animate-fade-in">
-              <label>Custom Category</label>
-              <input type="text" bind:value={customCategoryInput} placeholder="e.g., Fitness, Insurance" />
+              <label for="field-custom-cat">Custom Category</label>
+              <input id="field-custom-cat" type="text" bind:value={customCategoryInput} placeholder="e.g., Fitness, Insurance" />
             </div>
           {/if}
         </div>
@@ -163,33 +163,55 @@
         <div class="form-section">
           <div class="form-section-label">{$t('subs.price')}</div>
           <div class="form-row">
-            <div class="form-group form-price"><label>{$t('subs.price')} *</label><input type="number" step="0.01" bind:value={form.price} placeholder="0.00" /></div>
-            <div class="form-group form-auto"><label>{$t('subs.currency')}</label><select bind:value={form.currency}>{#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}<option value={cur}>{cur}</option>{/each}</select></div>
-            <div class="form-group form-auto"><label>{$t('subs.cycle')}</label><select bind:value={form.cycle} on:change={handleCycleChangeForRenewal}>{#each cycleIds as cid}<option value={cid}>{$t(`cycle.${cid}`)}</option>{/each}</select></div>
-            <div class="form-group form-price"><label>{$t('subs.original_price')}</label><input type="number" step="0.01" bind:value={form.original_price} placeholder="" /></div>
+            <div class="form-group form-price"><label for="field-price">{$t('subs.price')} *</label><input id="field-price" type="number" step="0.01" bind:value={form.price} placeholder="0.00" /></div>
+            <div class="form-group form-auto"><label for="field-currency">{$t('subs.currency')}</label><select id="field-currency" bind:value={form.currency}>{#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}<option value={cur}>{cur}</option>{/each}</select></div>
+            <div class="form-group form-auto"><label for="field-cycle">{$t('subs.cycle')}</label><select id="field-cycle" bind:value={form.cycle} on:change={handleCycleChangeForRenewal}>{#each cycleIds as cid}<option value={cid}>{$t(`cycle.${cid}`)}</option>{/each}</select></div>
+            <div class="form-group form-price"><label for="field-orig-price">{$t('subs.original_price')}</label><input id="field-orig-price" type="number" step="0.01" bind:value={form.original_price} placeholder="" /></div>
           </div>
           {#if form.original_price}
-            <div class="form-group"><label>{$t('subs.discount_note')}</label><input type="text" bind:value={form.discount_note} placeholder={$t('subs.discount_note_placeholder')} /></div>
+            <div class="form-group"><label for="field-discount">{$t('subs.discount_note')}</label><input id="field-discount" type="text" bind:value={form.discount_note} placeholder={$t('subs.discount_note_placeholder')} /></div>
           {/if}
         </div>
 
         <div class="form-section">
           <div class="form-section-label">{$t('subs.status')}</div>
           <div class="form-row">
-            <div class="form-group form-auto"><label>{$t('subs.status')}</label><select bind:value={form.status}><option value="active">{$t('status.active')}</option><option value="paused">{$t('status.paused')}</option><option value="cancelled">{$t('status.cancelled')}</option></select></div>
-            <div class="form-group flex-1"><label>{$t('subs.payment_method')}</label><input type="text" bind:value={form.payment_method} placeholder={$t('subs.payment_method_placeholder')} /></div>
-            <div class="form-group form-auto"><label>Remind</label><select bind:value={form.remind_days}><option value={1}>1d before</option><option value={3}>3d before</option><option value={7}>7d before</option></select></div>
+            <div class="form-group flex-1">
+              <span class="field-label">{$t('subs.status')}</span>
+              <div class="seg-control" role="radiogroup" aria-label="Status">
+                <button type="button" class="seg-btn" class:active={form.status === 'active'} on:click={() => form.status = 'active'}>
+                  <span class="seg-dot dot-active"></span>{$t('status.active')}
+                </button>
+                <button type="button" class="seg-btn" class:active={form.status === 'paused'} on:click={() => form.status = 'paused'}>
+                  <span class="seg-dot dot-paused"></span>{$t('status.paused')}
+                </button>
+                <button type="button" class="seg-btn" class:active={form.status === 'cancelled'} on:click={() => form.status = 'cancelled'}>
+                  <span class="seg-dot dot-cancelled"></span>{$t('status.cancelled')}
+                </button>
+              </div>
+            </div>
+            <div class="form-group form-auto">
+              <span class="field-label">Remind</span>
+              <div class="seg-control" role="radiogroup" aria-label="Remind days">
+                <button type="button" class="seg-btn" class:active={form.remind_days == 1} on:click={() => form.remind_days = 1}>1d</button>
+                <button type="button" class="seg-btn" class:active={form.remind_days == 3} on:click={() => form.remind_days = 3}>3d</button>
+                <button type="button" class="seg-btn" class:active={form.remind_days == 7} on:click={() => form.remind_days = 7}>7d</button>
+              </div>
+            </div>
           </div>
           <div class="form-row">
-            <div class="form-group flex-1"><label>{$t('subs.start_date')}</label><input type="date" bind:value={form.start_date} on:change={handleStartDateChange} /></div>
-            <div class="form-group flex-1"><label>{$t('subs.next_renewal')}</label><input type="date" bind:value={form.next_renewal} on:change={handleRenewalManualEdit} /></div>
+            <div class="form-group flex-1"><label for="field-payment">{$t('subs.payment_method')}</label><input id="field-payment" type="text" bind:value={form.payment_method} placeholder={$t('subs.payment_method_placeholder')} /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1"><label for="field-start-date">{$t('subs.start_date')}</label><input id="field-start-date" type="date" bind:value={form.start_date} on:change={handleStartDateChange} /></div>
+            <div class="form-group flex-1"><label for="field-next-renewal">{$t('subs.next_renewal')}</label><input id="field-next-renewal" type="date" bind:value={form.next_renewal} on:change={handleRenewalManualEdit} /></div>
           </div>
         </div>
 
         <div class="form-section">
           <div class="form-section-label">{$t('subs.notes')}</div>
-          <div class="form-group"><label>{$t('subs.url')}</label><input type="url" bind:value={form.url} placeholder={$t('subs.url_placeholder')} /></div>
-          <div class="form-group"><label>{$t('subs.notes')}</label><textarea bind:value={form.notes} rows="2" placeholder={$t('subs.notes_placeholder')}></textarea></div>
+          <div class="form-group"><label for="field-url">{$t('subs.url')}</label><input id="field-url" type="url" bind:value={form.url} placeholder={$t('subs.url_placeholder')} /></div>
+          <div class="form-group"><label for="field-notes">{$t('subs.notes')}</label><textarea id="field-notes" bind:value={form.notes} rows="2" placeholder={$t('subs.notes_placeholder')}></textarea></div>
         </div>
       </div>
       <div class="modal-footer">
@@ -216,7 +238,7 @@
     display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px;
   }
   .modal {
-    width: 100%; max-width: 560px; max-height: 90vh; background: var(--surface);
+    width: 100%; max-width: 640px; max-height: 90vh; background: var(--surface);
     border-radius: var(--radius-lg); border: 1px solid var(--border);
     display: flex; flex-direction: column; overflow: hidden;
     box-shadow: var(--shadow-lg);
@@ -242,17 +264,52 @@
   .flex-1 { flex: 1; }
   .form-auto { flex: 0 0 auto; }
   .form-price { flex: 0 0 130px; }
-  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; }
+  .form-group label, .form-group .field-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 5px; }
   .form-group input, .form-group select, .form-group textarea {
     width: 100%; padding: 9px 12px; background: var(--card); border: 1px solid var(--border);
     border-radius: var(--radius-sm); color: var(--text-primary); font-size: 14px;
     transition: all var(--transition);
+  }
+  .form-group select {
+    appearance: none; -webkit-appearance: none;
+    padding-right: 34px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23929292' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+    cursor: pointer;
   }
   .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px var(--primary-glow);
   }
   .form-group textarea { resize: vertical; }
+
+  /* Segmented Control */
+  .seg-control {
+    display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden; background: var(--card);
+  }
+  .seg-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 8px 12px; font-size: 13px; font-weight: 500;
+    color: var(--text-secondary); background: transparent;
+    border: none; border-right: 1px solid var(--border);
+    transition: all var(--transition); cursor: pointer;
+    white-space: nowrap; min-width: 44px; min-height: 40px;
+  }
+  .seg-btn:last-child { border-right: none; }
+  .seg-btn:hover { background: var(--hover); color: var(--text-primary); }
+  .seg-btn.active {
+    background: var(--primary-tint); color: var(--primary); font-weight: 600;
+  }
+  .seg-btn:active { transform: scale(0.97); }
+  .seg-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-active { background: var(--success); }
+  .dot-paused { background: var(--warning); }
+  .dot-cancelled { background: var(--text-tertiary); }
 
   /* Make date inputs clickable anywhere to open picker */
   .form-group input[type="date"] {
@@ -316,7 +373,23 @@
   .delete-confirm-text { font-size: 13px; color: var(--error); font-weight: 500; }
 
   @media (max-width: 768px) {
+    .modal { max-height: 95vh; }
     .modal-body { padding: 16px; }
-    .form-row { gap: 10px; flex-wrap: wrap; }
+    .modal-header { padding: 16px; }
+    .modal-footer { padding: 12px 16px; }
+
+    /* Stack all form items vertically by default */
+    .form-row { gap: 8px; flex-wrap: wrap; }
+    .form-group { margin-bottom: 10px; }
+    .form-auto { flex: 1 1 100%; }
+    .form-price { flex: 1 1 calc(50% - 4px); }
+    .flex-1 { flex: 1 1 100%; }
+
+    /* Segmented controls full width */
+    .seg-control { width: 100%; }
+    .seg-btn { padding: 10px 14px; min-height: 44px; font-size: 14px; }
+
+    /* Make selects full width */
+    .form-group select { width: 100%; }
   }
 </style>

@@ -46,8 +46,38 @@
   // Daily cost
   $: dailyCost = overview ? (overview.monthly_total / 30) : 0;
 
+  // Daily cost hint tiers
+  const dailyHintTiers = [
+    [3,    '≈ 一瓶矿泉水 💧',       '≈ a bottle of water 💧'],
+    [10,   '≈ 一杯奶茶 🧋',         '≈ a bubble tea 🧋'],
+    [30,   '≈ 一杯拿铁 ☕',          '≈ a latte ☕'],
+    [60,   '≈ 一碗拉面 🍜',         '≈ a bowl of ramen 🍜'],
+    [150,  '≈ 一顿外卖 🥡',         '≈ a takeout meal 🥡'],
+    [300,  '≈ 一张电影票 🎬',       '≈ a movie ticket 🎬'],
+    [500,  '≈ 一张演唱会门票 🎤',    '≈ a concert ticket 🎤'],
+    [1000, '≈ 一晚很好的酒店 🏨',    '≈ a nice hotel night 🏨'],
+  ];
+  $: dailyHint = (() => {
+    if (!dailyCost) return '';
+    const isZh = $locale === 'zh';
+    for (const [threshold, zh, en] of dailyHintTiers) {
+      if (dailyCost < threshold) return isZh ? zh : en;
+    }
+    return isZh ? '该认真审视订阅了 💸' : 'time for a subscription audit 💸';
+  })();
+
   // Category max (for bar widths)
   $: catMax = categoryData.length > 0 ? Math.max(...categoryData.map(c => c.monthly_total)) : 1;
+
+  // Sorted currencies: base currency first, then by monthly descending
+  $: sortedCurrencies = overview && overview.by_currency
+    ? Object.entries(overview.by_currency).sort(([a, ai], [b, bi]) => {
+        const base = overview.base_currency || 'USD';
+        if (a === base) return -1;
+        if (b === base) return 1;
+        return bi.monthly - ai.monthly;
+      })
+    : [];
 
   // Renewal tag helper
   function getRenewalTag(days) {
@@ -135,7 +165,7 @@
           {/if}
         </button>
       {/if}
-      <button class="btn-add" on:click={() => window.location.hash = '#/subs'}>
+      <button class="btn-add" on:click={() => { editingSub = null; showEditor = true; }}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         {$t('overview.add')}
       </button>
@@ -181,7 +211,7 @@
       <div class="stat-card">
         <div class="stat-label">{$t('overview.daily_cost')}</div>
         <div class="stat-value tabular-nums">{formatPrice(dailyCost, overview.base_currency)}</div>
-        <div class="stat-hint">{$t('overview.daily_hint')}</div>
+        <div class="stat-hint">{dailyHint}</div>
       </div>
     </div>
 
@@ -232,46 +262,48 @@
       </div>
     </div>
 
-    <!-- Row 3: Category Spending -->
+    <!-- Row 3: Category Spending + Currency Breakdown -->
     {#if categoryData.length > 0}
-      <div class="panel full-width animate-fade-in" style="animation-delay: 120ms">
-        <h2 class="panel-title">{$t('overview.category_spend')}</h2>
-        <div class="cat-bars">
-          {#each categoryData as cat}
-            {@const pct = catMax > 0 ? (cat.monthly_total / catMax * 100) : 0}
-            {@const catColor = getCategoryColor(cat.category)}
-            <div class="cat-bar-row">
-              <div class="cat-bar-label">
-                <span class="cat-bar-icon" style="background: {catColor.bg}; color: {catColor.text}">{getCategoryIcon(cat.category)}</span>
-                <span class="cat-bar-name">{getCategoryName(cat.category, $t)}</span>
-                <span class="cat-bar-count">{cat.count}</span>
+      <div class="content-row animate-fade-in" style="animation-delay: 120ms">
+        <div class="panel">
+          <h2 class="panel-title">{$t('overview.category_spend')}</h2>
+          <div class="cat-bars">
+            {#each categoryData as cat}
+              {@const pct = catMax > 0 ? (cat.monthly_total / catMax * 100) : 0}
+              {@const catColor = getCategoryColor(cat.category)}
+              <div class="cat-bar-row">
+                <div class="cat-bar-label">
+                  <span class="cat-bar-icon" style="background: {catColor.bg}; color: {catColor.text}">{getCategoryIcon(cat.category)}</span>
+                  <span class="cat-bar-name">{getCategoryName(cat.category, $t)}</span>
+                  <span class="cat-bar-count">{cat.count}</span>
+                </div>
+                <div class="cat-bar-track">
+                  <div class="cat-bar-fill" style="width: {pct}%; background: {catColor.text}"></div>
+                </div>
+                <div class="cat-bar-value tabular-nums">
+                  <span class="cat-val-main">{formatPrice(cat.monthly_total, overview.base_currency)}{$t('overview.per_month')}</span>
+                  <span class="cat-val-sub">{formatPrice(cat.monthly_total * 12, overview.base_currency)}{$t('subs.per_year')} · {formatPrice(cat.monthly_total / 30, overview.base_currency)}{$t('overview.per_day')}</span>
+                </div>
               </div>
-              <div class="cat-bar-track">
-                <div class="cat-bar-fill" style="width: {pct}%; background: {catColor.text}"></div>
-              </div>
-              <div class="cat-bar-value tabular-nums">
-                <span class="cat-val-main">{formatPrice(cat.monthly_total, overview.base_currency)}{$t('overview.per_month')}</span>
-                <span class="cat-val-sub">{formatPrice(cat.monthly_total * 12, overview.base_currency)}{$t('subs.per_year')} · {formatPrice(cat.monthly_total / 30, overview.base_currency)}{$t('overview.per_day')}</span>
-              </div>
-            </div>
-          {/each}
+            {/each}
+          </div>
         </div>
-      </div>
-    {/if}
 
-    <!-- Row 4: Currency breakdown (only if multiple currencies) -->
-    {#if overview.by_currency && Object.keys(overview.by_currency).length > 1}
-      <div class="panel full-width animate-fade-in" style="animation-delay: 180ms">
-        <h2 class="panel-title">{$t('overview.by_currency')}</h2>
-        <div class="currency-grid">
-          {#each Object.entries(overview.by_currency) as [cur, info]}
-            <div class="currency-item">
-              <div class="currency-name">{cur}</div>
-              <div class="currency-monthly tabular-nums">{formatPrice(info.monthly, cur)}{$t('subs.per_month')}</div>
-              <div class="currency-yearly tabular-nums">{formatPrice(info.yearly, cur)}{$t('subs.per_year')}</div>
+        {#if overview.by_currency && Object.keys(overview.by_currency).length > 1}
+          <div class="panel">
+            <h2 class="panel-title">{$t('overview.by_currency')}</h2>
+            <div class="currency-grid">
+              {#each sortedCurrencies as [cur, info]}
+                <div class="currency-item">
+                  <div class="currency-name">{cur}{cur === overview.base_currency ? ' ★' : ''}</div>
+                  <div class="currency-monthly tabular-nums">{formatPrice(info.monthly, cur)}{$t('subs.per_month')}</div>
+                  <div class="currency-yearly tabular-nums">{formatPrice(info.yearly, cur)}{$t('subs.per_year')}</div>
+                  <div class="currency-daily tabular-nums">{formatPrice(info.monthly / 30, cur)}{$t('overview.per_day')}</div>
+                </div>
+              {/each}
             </div>
-          {/each}
-        </div>
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -386,6 +418,7 @@
     border-color: var(--text-tertiary);
   }
   .panel.full-width { margin-bottom: 24px; }
+  .content-row > .panel:only-child { grid-column: 1 / -1; }
   .panel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
   .panel-title { font-size: 15px; font-weight: 600; }
   .panel-badge {
@@ -435,7 +468,7 @@
   /* Category Bars */
   .cat-bars { display: flex; flex-direction: column; gap: 12px; }
   .cat-bar-row {
-    display: grid; grid-template-columns: 160px 1fr 120px; gap: 16px;
+    display: grid; grid-template-columns: 140px 1fr auto; gap: 12px;
     align-items: center; padding: 6px 8px;
     border-radius: var(--radius-sm); transition: background 0.2s ease;
   }
@@ -461,7 +494,7 @@
     text-align: right; white-space: nowrap;
     display: flex; flex-direction: column; gap: 1px;
   }
-  .cat-val-main { font-size: 13px; font-weight: 600; }
+  .cat-val-main { font-size: 15px; font-weight: 700; }
   .cat-val-sub { font-size: 11px; color: var(--text-tertiary); font-weight: 400; }
 
   /* Currency */
@@ -480,6 +513,7 @@
   .currency-name { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }
   .currency-monthly { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; }
   .currency-yearly { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .currency-daily { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
 
   /* Welcome */
   .welcome-state {

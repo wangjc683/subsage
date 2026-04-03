@@ -302,7 +302,7 @@ textarea:focus:not(:focus-visible) {
   }
 
   .filters {
-    flex-direction: column;
+    flex-direction: row;
   }
 
   .sub-card {
