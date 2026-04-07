@@ -1,9 +1,10 @@
 <script>
-  import { settings } from '../stores/index.js';
+  import { settings, toasts } from '../stores/index.js';
   import { currencies, theme } from '../stores/index.js';
   import { exportExcel, exportJSON, importJSON as apiImportJSON, getExchangeRates } from '../api/index.js';
   import { onMount, onDestroy } from 'svelte';
   import { t, locale, locales, setLocale } from '../i18n/index.js';
+  import { APP_VERSION } from '../version.js';
 
   let baseCurrency = 'USD';
   let saved = false;
@@ -116,7 +117,7 @@
       saved = true;
       setTimeout(() => saved = false, 2000);
     } catch (e) {
-      alert('Save failed: ' + e.message);
+      toasts.error($t('common.save_failed') + ': ' + e.message);
     } finally {
       saving = false;
     }
@@ -126,7 +127,7 @@
     try {
       await exportExcel();
     } catch (e) {
-      alert('Export failed: ' + e.message);
+      toasts.error($t('common.export_failed') + ': ' + e.message);
     }
   }
 
@@ -134,7 +135,7 @@
     try {
       await exportJSON();
     } catch (e) {
-      alert('Export failed: ' + e.message);
+      toasts.error($t('common.export_failed') + ': ' + e.message);
     }
   }
 
@@ -152,10 +153,10 @@
         const text = await file.text();
         const data = JSON.parse(text);
         await apiImportJSON(data);
-        importSuccess = `Imported ${Array.isArray(data) ? data.length : 0} records`;
+        importSuccess = $t('common.imported_records', { count: Array.isArray(data) ? data.length : 0 });
         setTimeout(() => importSuccess = '', 3000);
       } catch (e) {
-        importError = e.message || 'Import failed';
+        importError = e.message || $t('common.import_failed');
       } finally {
         importing = false;
       }
@@ -344,7 +345,7 @@
     <div class="about-info">
       <div class="about-row">
         <span class="about-key">{$t('settings.version')}</span>
-        <span class="about-val">v0.2.2</span>
+        <span class="about-val">{APP_VERSION}</span>
       </div>
       <div class="about-row">
         <span class="about-key">{$t('settings.tech_stack')}</span>

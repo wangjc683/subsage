@@ -1,8 +1,9 @@
 <script>
   import { login, setup, getAuthStatus } from '../api/index.js';
   import { t } from '../i18n/index.js';
+  import { APP_VERSION } from '../version.js';
 
-  export let isSetup = false;
+
 
   let username = '';
   let password = '';
@@ -176,15 +177,15 @@
       <div class="mobile-features">
         <div class="mobile-features-divider"></div>
         <div class="mobile-feature-list">
-          <div class="mobile-feature"><span>🤖</span><span>AI Agent Native</span></div>
-          <div class="mobile-feature"><span>📊</span><span>Smart Analytics</span></div>
-          <div class="mobile-feature"><span>💬</span><span>Chat to Manage</span></div>
-          <div class="mobile-feature"><span>🔒</span><span>Open Source · Self-hosted</span></div>
+          <div class="mobile-feature"><span>🤖</span><span>{$t('login.mobile_feat1')}</span></div>
+          <div class="mobile-feature"><span>📊</span><span>{$t('login.mobile_feat2')}</span></div>
+          <div class="mobile-feature"><span>💬</span><span>{$t('login.mobile_feat3')}</span></div>
+          <div class="mobile-feature"><span>🔒</span><span>{$t('login.mobile_feat4')}</span></div>
         </div>
       </div>
 
       <div class="login-footer">
-        <span class="login-version">SubSage v0.2.2</span>
+        <span class="login-version">SubSage {APP_VERSION}</span>
       </div>
     </div>
   </div>

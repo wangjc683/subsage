@@ -22,6 +22,10 @@ locale.subscribe(val => {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('sage_locale', val);
   }
+  // Sync HTML lang attribute so native date pickers etc. use correct locale
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = val === 'zh' ? 'zh-CN' : val;
+  }
 });
 
 // Translation function store (reactive)

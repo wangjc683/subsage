@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { currentPage, theme } from '../stores/index.js';
   import { t } from '../i18n/index.js';
+  import { APP_VERSION } from '../version.js';
 
   const navItems = [
     { id: 'overview', icon: 'home', key: 'nav.overview' },
@@ -146,7 +147,7 @@
     </button>
 
     <div class="sidebar-version">
-      <span class="version-text">v0.2.2</span>
+      <span class="version-text">{APP_VERSION}</span>
     </div>
   </div>
 </nav>

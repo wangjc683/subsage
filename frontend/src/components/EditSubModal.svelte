@@ -1,7 +1,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { settings, categories, getCategoryName, cycleIds, toasts } from '../stores/index.js';
-  import { t } from '../i18n/index.js';
+  import { t, locale } from '../i18n/index.js';
+
+  $: dateLang = $locale === 'zh' ? 'zh-CN' : 'en';
   import { createSub, updateSub, deleteSub } from '../api/index.js';
 
   export let show = false;
@@ -56,8 +58,8 @@
   }
 
   async function handleSave() {
-    if (!form.name || !form.price) { formError = $t('subs.name') + ' & ' + $t('subs.price') + ' required'; return; }
-    if (form.category === '__custom__' && !customCategoryInput.trim()) { formError = 'Enter custom category'; return; }
+    if (!form.name || !form.price) { formError = $t('subs.name') + ' & ' + $t('subs.price') + ' ' + $t('common.required'); return; }
+    if (form.category === '__custom__' && !customCategoryInput.trim()) { formError = $t('subs.enter_custom_category'); return; }
     formLoading = true; formError = '';
     try {
       const resolvedCategory = form.category === '__custom__' ? customCategoryInput.trim() : form.category;
@@ -70,7 +72,7 @@
       };
       if (editing) await updateSub(sub.id, data);
       else await createSub(data);
-      toasts.success(editing ? 'Updated' : 'Added');
+      toasts.success(editing ? $t('common.updated') : $t('common.added'));
       close();
       dispatch('saved');
     } catch (e) { formError = e.message; }
@@ -81,11 +83,11 @@
     if (!editing) return;
     try {
       await deleteSub(sub.id);
-      toasts.success('Deleted');
+      toasts.success($t('common.deleted'));
       close();
       dispatch('deleted');
     } catch (e) {
-      toasts.error('Delete failed: ' + e.message);
+      toasts.error($t('common.delete_failed') + ': ' + e.message);
     }
   }
 
@@ -148,13 +150,13 @@
               <select id="field-category" bind:value={form.category} on:change={() => { if (form.category !== '__custom__') customCategoryInput = ''; }}>
                 {#each categories as cat}<option value={cat.id}>{cat.icon} {getCategoryName(cat.id, $t)}</option>{/each}
                 <option disabled>──────</option>
-                <option value="__custom__">✏️ Custom...</option>
+                <option value="__custom__">{$t('subs.custom_option')}</option>
               </select>
             </div>
           </div>
           {#if isCustomCategory}
             <div class="form-group animate-fade-in">
-              <label for="field-custom-cat">Custom Category</label>
+              <label for="field-custom-cat">{$t('subs.custom_category')}</label>
               <input id="field-custom-cat" type="text" bind:value={customCategoryInput} placeholder="e.g., Fitness, Insurance" />
             </div>
           {/if}
@@ -191,7 +193,7 @@
               </div>
             </div>
             <div class="form-group form-auto">
-              <span class="field-label">Remind</span>
+              <span class="field-label">{$t('subs.remind')}</span>
               <div class="seg-control" role="radiogroup" aria-label="Remind days">
                 <button type="button" class="seg-btn" class:active={form.remind_days == 1} on:click={() => form.remind_days = 1}>1d</button>
                 <button type="button" class="seg-btn" class:active={form.remind_days == 3} on:click={() => form.remind_days = 3}>3d</button>
@@ -203,8 +205,8 @@
             <div class="form-group flex-1"><label for="field-payment">{$t('subs.payment_method')}</label><input id="field-payment" type="text" bind:value={form.payment_method} placeholder={$t('subs.payment_method_placeholder')} /></div>
           </div>
           <div class="form-row">
-            <div class="form-group flex-1"><label for="field-start-date">{$t('subs.start_date')}</label><input id="field-start-date" type="date" bind:value={form.start_date} on:change={handleStartDateChange} /></div>
-            <div class="form-group flex-1"><label for="field-next-renewal">{$t('subs.next_renewal')}</label><input id="field-next-renewal" type="date" bind:value={form.next_renewal} on:change={handleRenewalManualEdit} /></div>
+            <div class="form-group flex-1"><label for="field-start-date">{$t('subs.start_date')}</label><input id="field-start-date" type="date" lang={dateLang} bind:value={form.start_date} on:change={handleStartDateChange} /></div>
+            <div class="form-group flex-1"><label for="field-next-renewal">{$t('subs.next_renewal')}</label><input id="field-next-renewal" type="date" lang={dateLang} bind:value={form.next_renewal} on:change={handleRenewalManualEdit} /></div>
           </div>
         </div>
 

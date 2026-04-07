@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { getOverview, getByCategory, getMonthlyTrend, getAgentStatus } from '../api/index.js';
   import { subs, formatPrice, getCategoryIcon, getCategoryName, getCategoryColor, daysUntil, settings } from '../stores/index.js';
   import { t, locale } from '../i18n/index.js';
@@ -82,7 +82,8 @@
   // Renewal tag helper
   function getRenewalTag(days) {
     if (days === null) return { text: '—', cls: '' };
-    if (days < 0) return { text: $t('overview.overdue_days', { days: Math.abs(days) }), cls: 'overdue' };
+    if (days < -3) return { text: $t('overview.overdue_days', { days: Math.abs(days) }), cls: 'overdue-severe' };
+    if (days < 0) return { text: $t('overview.overdue_days', { days: Math.abs(days) }), cls: 'overdue-mild' };
     if (days === 0) return { text: $t('overview.today'), cls: 'today' };
     if (days <= 3) return { text: $t('overview.days_later', { days }), cls: 'soon' };
     return { text: $t('overview.days_later', { days }), cls: 'normal' };
@@ -145,13 +146,29 @@
     }
   }
 
-  onMount(() => { loadData(); subs.fetch(); });
+  function handleKeydown(e) {
+    if (showEditor) {
+      if (e.key === 'Escape') showEditor = false;
+      return;
+    }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); editingSub = null; showEditor = true; }
+  }
+
+  onMount(() => {
+    loadData();
+    subs.fetch();
+    window.addEventListener('keydown', handleKeydown);
+  });
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleKeydown);
+  });
 </script>
 
 <div class="overview-page">
   <div class="page-header">
     <div class="page-header-left">
-      <h1>{greeting}{username ? `，${username}` : ''} 👋</h1>
+      <h1>{greeting}{username ? `${$locale === 'zh' ? '，' : ', '}${username}` : ''} 👋</h1>
       <p class="page-date">{todayStr}</p>
     </div>
     <div class="header-actions">
@@ -312,7 +329,7 @@
       <div class="welcome-icon">🌱</div>
       <h2>{$t('overview.welcome_title')}</h2>
       <p>{$t('overview.welcome_desc')}</p>
-      <button class="btn-cta" on:click={() => window.location.hash = '#/subs'}>
+      <button class="btn-cta" on:click={() => { editingSub = null; showEditor = true; }}>
         {$t('overview.welcome_cta')}
       </button>
     </div>
@@ -449,8 +466,9 @@
     font-size: 11px; font-weight: 600; padding: 3px 10px;
     border-radius: 20px; white-space: nowrap; font-variant-numeric: tabular-nums;
   }
-  .renewal-tag.overdue { background: rgba(237, 63, 63, 0.12); color: var(--error); }
-  .renewal-tag.today { background: rgba(237, 63, 63, 0.12); color: var(--error); }
+  .renewal-tag.overdue-severe { background: rgba(237, 63, 63, 0.12); color: var(--error); }
+  .renewal-tag.overdue-mild { background: rgba(245, 130, 32, 0.12); color: #E07020; }
+  .renewal-tag.today { background: rgba(255, 176, 32, 0.15); color: #C08A00; }
   .renewal-tag.soon { background: rgba(255, 176, 32, 0.12); color: var(--warning); }
   .renewal-tag.normal { background: var(--primary-tint); color: var(--primary); }
 
@@ -552,20 +570,27 @@
       justify-content: flex-start;
     }
 
-    /* Compact stat cards */
+    /* Horizontal scrollable stats */
     .stats-bar {
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 16px;
+      display: flex;
+      overflow-x: auto;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
+    .stats-bar::-webkit-scrollbar { display: none; }
     .stat-card {
-      padding: 14px 14px;
+      padding: 10px 14px;
+      min-width: 120px;
+      flex-shrink: 0;
     }
-    .stat-label { font-size: 11px; margin-bottom: 4px; }
-    .stat-value { font-size: 20px; }
-    .stat-unit { font-size: 12px; }
-    .stat-hint { font-size: 10px; }
-    .stat-trend { font-size: 11px; margin-top: 4px; }
+    .stat-label { font-size: 10px; margin-bottom: 2px; letter-spacing: 0.3px; }
+    .stat-value { font-size: 18px; }
+    .stat-unit { font-size: 11px; }
+    .stat-hint { font-size: 9px; }
+    .stat-trend { font-size: 10px; margin-top: 2px; padding: 1px 6px; }
 
     /* Agent badge compact */
     .agent-badge { font-size: 11px; padding: 4px 10px; }

@@ -8,8 +8,7 @@ export default {
   'nav.follow_system': '跟随系统',
   'nav.light_mode': '浅色模式',
   'nav.dark_mode': '深色模式',
-  'nav.logout': '退出',
-  'nav.version': 'v0.2.2',
+  'nav.logout': '退出登录',
 
   // --- Login ---
   'login.tagline': 'AI Agent 原生的订阅管理',
@@ -120,6 +119,17 @@ export default {
   'subs.created_at': '创建时间',
   'subs.more': '更多',
   'subs.less': '收起',
+  'subs.custom_category': '自定义分类',
+  'subs.custom_option': '✏️ 自定义...',
+  'subs.enter_custom_category': '请输入自定义分类',
+  'subs.remind': '提醒',
+  'subs.select_all': '全选',
+  'subs.deselect': '取消全选',
+  'subs.batch_selected': '已选 {count} 项',
+  'subs.batch_confirm_status': '将 {count} 项改为「{label}」？',
+  'subs.batch_confirm_delete': '删除 {count} 项？此操作不可撤销！',
+  'subs.batch_updated': '已更新 {count} 项',
+  'subs.batch_deleted': '已删除 {count} 项',
 
   // --- Calendar ---
   'calendar.title': '日历',
@@ -252,16 +262,37 @@ export default {
   'common.min_ago': '{min} 分钟前',
   'common.hour_ago': '{hour} 小时前',
   'common.day_ago': '{day} 天前',
+  'common.updated': '已更新',
+  'common.added': '已添加',
+  'common.deleted': '已删除',
+  'common.required': '为必填项',
+  'common.delete_failed': '删除失败',
+  'common.save_failed': '保存失败',
+  'common.export_failed': '导出失败',
+  'common.import_failed': '导入失败',
+  'common.imported_records': '已导入 {count} 条记录',
 
   // --- Charts ---
   'chart.monthly_trend': '月度支出趋势',
   'chart.category_dist': '分类分布',
   'chart.amount': '金额',
   'chart.average': '平均值',
+  'chart.no_data': '暂无数据',
+  'chart.no_trend': '暂无趋势数据',
 
   // --- Batch ---
   'subs.batch': '批量',
   'subs.batch_cancel': '取消',
+
+  // --- Login Mobile ---
+  'login.mobile_feat1': 'AI Agent 原生',
+  'login.mobile_feat2': '智能分析',
+  'login.mobile_feat3': '对话式管理',
+  'login.mobile_feat4': '开源 · 自托管',
+
+  // --- 404 ---
+  'error.not_found': '页面未找到',
+  'error.back_home': '返回总览',
 
   // --- Units ---
   'overview.per_day': '/天',

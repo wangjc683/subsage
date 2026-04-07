@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { currentPage, theme } from './stores/index.js';
+  import { t } from './i18n/index.js';
 
   let currentRoute = 'login';
 
@@ -50,6 +51,8 @@
     {/await}
     <main class="main-content">
       <div class="content-center">
+        {#key currentRoute}
+        <div class="page-transition">
         {#if currentRoute === 'overview'}
           {#await import('./pages/Overview.svelte') then module}
             <svelte:component this={module.default} />
@@ -73,10 +76,12 @@
         {:else}
           <div class="not-found">
             <h2>404</h2>
-            <p>Page not found</p>
-            <a href="#/overview">Back to Overview</a>
+            <p>{$t('error.not_found')}</p>
+            <a href="#/overview">{$t('error.back_home')}</a>
           </div>
         {/if}
+        </div>
+        {/key}
       </div>
     </main>
   </div>
@@ -106,6 +111,15 @@
     margin: 0 auto;
     padding: 0 24px;
     min-height: 100%;
+  }
+
+  .page-transition {
+    animation: pageEnter 0.2s ease-out;
+  }
+
+  @keyframes pageEnter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .not-found {

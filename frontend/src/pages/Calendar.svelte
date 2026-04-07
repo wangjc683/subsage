@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { subs, getCategoryIcon, daysUntil, formatPrice, settings } from '../stores/index.js';
+  import { subs, getCategoryIcon, getCategoryColor, daysUntil, formatPrice, settings } from '../stores/index.js';
   import { t, locale } from '../i18n/index.js';
   import EditSubModal from '../components/EditSubModal.svelte';
 
@@ -312,7 +312,8 @@
             {#if cell.subs.length > 0}
               <div class="day-subs">
                 {#each cell.subs.slice(0, 2) as sub}
-                  <div class="day-sub" class:dim-sub={cell.dimmed} title="{sub.name}">
+                  {@const cc = getCategoryColor(sub.category)}
+                  <div class="day-sub" class:dim-sub={cell.dimmed} title="{sub.name}" style="background: {cc.bg}; color: {cc.text}">
                     <span class="day-sub-icon">{getCategoryIcon(sub.category)}</span>
                     <span class="day-sub-name">{sub.name}</span>
                   </div>
@@ -535,7 +536,7 @@
   .day-subs { display: flex; flex-direction: column; gap: 2px; flex: 1; }
   .day-sub {
     display: flex; align-items: center; gap: 4px; padding: 2px 5px;
-    background: var(--primary-tint); border-radius: 4px; font-size: 11px;
+    border-radius: 4px; font-size: 11px;
     overflow: hidden; white-space: nowrap;
   }
   .day-sub.dim-sub { opacity: 0.45; }
@@ -683,5 +684,22 @@
       text-align: center; padding: 40px 0;
       color: var(--text-secondary); font-size: 14px;
     }
+  }
+
+  /* Dark mode enhancements */
+  :global([data-theme="dark"]) .day-sub {
+    filter: brightness(1.3);
+  }
+  :global([data-theme="dark"]) .day-bar {
+    opacity: 0.8;
+  }
+  :global([data-theme="dark"]) .day-cell.dimmed {
+    background: #1A1A1A;
+  }
+  :global([data-theme="dark"]) .mobile-day.dimmed {
+    background: #1A1A1A;
+  }
+  :global([data-theme="dark"]) .mobile-dot {
+    filter: brightness(1.2);
   }
 </style>

@@ -87,7 +87,8 @@
 
   function renewalBadge(d) {
     if (d === null) return null;
-    if (d < 0) return { text: $t('subs.overdue', { days: Math.abs(d) }), cls: 'renewal-badge-overdue' };
+    if (d < -3) return { text: $t('subs.overdue', { days: Math.abs(d) }), cls: 'renewal-badge-overdue' };
+    if (d < 0) return { text: $t('subs.overdue', { days: Math.abs(d) }), cls: 'renewal-badge-overdue-mild' };
     if (d === 0) return { text: $t('subs.renews_today'), cls: 'renewal-badge-today' };
     if (d <= 3) return { text: $t('subs.renews_in', { days: d }), cls: 'renewal-badge-urgent' };
     if (d <= 7) return { text: $t('subs.renews_in', { days: d }), cls: 'renewal-badge-soon' };
@@ -156,7 +157,7 @@
 
   async function batchSetStatus(status) {
     const label = { active: $t('status.active'), paused: $t('status.paused'), cancelled: $t('status.cancelled') }[status];
-    if (!confirm(`Change ${selectedCount} items to "${label}"?`)) return;
+    if (!confirm($t('subs.batch_confirm_status', { count: selectedCount, label }))) return;
     let ok = 0;
     for (const id of selectedIds) {
       try {
@@ -166,18 +167,18 @@
     }
     selectedIds.clear(); batchMode = false;
     refresh();
-    toasts.success(`Updated ${ok} items`);
+    toasts.success($t('subs.batch_updated', { count: ok }));
   }
 
   async function batchDelete() {
-    if (!confirm(`Delete ${selectedCount} items? Cannot be undone!`)) return;
+    if (!confirm($t('subs.batch_confirm_delete', { count: selectedCount }))) return;
     let ok = 0;
     for (const id of selectedIds) {
       try { await deleteSub(id); ok++; } catch (_) {}
     }
     selectedIds.clear(); batchMode = false;
     refresh();
-    toasts.success(`Deleted ${ok} items`);
+    toasts.success($t('subs.batch_deleted', { count: ok }));
   }
 
   function openCreate() {
@@ -206,14 +207,16 @@
 
   async function executeDelete() {
     if (!deleteConfirmSub) return;
+    const name = deleteConfirmSub.name;
+    const id = deleteConfirmSub.id;
+    deleteConfirmSub = null;
     try {
-      await deleteSub(deleteConfirmSub.id);
-      toasts.success($t('subs.delete') + ': ' + deleteConfirmSub.name);
+      await deleteSub(id);
+      toasts.success($t('subs.delete') + ': ' + name);
       refresh();
     } catch (e) {
-      toasts.error(e.message || 'Delete failed');
+      toasts.error(e.message || $t('common.delete_failed'));
     }
-    deleteConfirmSub = null;
   }
 
   function statusLabel(s) { return { active: $t('status.active'), paused: $t('status.paused'), cancelled: $t('status.cancelled') }[s] || s; }
@@ -252,9 +255,9 @@
     <div class="batch-bar animate-fade-in">
       <button class="btn-check" on:click={toggleSelectAll}>
         <span class="checkbox" class:checked={allSelected}>✓</span>
-        {allSelected ? 'Deselect' : 'Select All'}
+        {allSelected ? $t('subs.deselect') : $t('subs.select_all')}
       </button>
-      <span class="batch-count">{selectedCount} selected</span>
+      <span class="batch-count">{$t('subs.batch_selected', { count: selectedCount })}</span>
       <div class="batch-actions">
         <button class="btn-batch-action" on:click={() => batchSetStatus('active')} disabled={selectedCount === 0}>▶ {$t('status.active')}</button>
         <button class="btn-batch-action" on:click={() => batchSetStatus('paused')} disabled={selectedCount === 0}>⏸ {$t('status.paused')}</button>
@@ -307,7 +310,11 @@
       <div class="search-box" class:focused={searchFocused}>
         <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="search-input" placeholder="{$t('subs.search_placeholder')}" bind:value={searchQuery} on:focus={() => searchFocused = true} on:blur={() => searchFocused = false} />
-        {#if !searchFocused && !searchQuery}
+        {#if searchQuery}
+          <button class="search-clear" on:click={() => searchQuery = ''} type="button" aria-label="Clear search">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        {:else if !searchFocused}
           <kbd class="search-kbd">/</kbd>
         {/if}
       </div>
@@ -463,7 +470,10 @@
                 {#if sub.url}
                   <div class="detail-item">
                     <span class="detail-label">{$t('subs.url')}</span>
-                    <a href={sub.url} target="_blank" rel="noopener">{sub.url}</a>
+                    <a href={sub.url} target="_blank" rel="noopener" class="detail-url-link" on:click|stopPropagation>
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      <span class="detail-url-text">{sub.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                    </a>
                   </div>
                 {/if}
                 {#if sub.original_price && sub.original_price > sub.price}
@@ -728,6 +738,18 @@
     line-height: 1;
   }
 
+  .search-clear {
+    position: absolute; right: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    color: var(--text-tertiary);
+    transition: all var(--transition);
+    cursor: pointer;
+    background: none; border: none; padding: 0;
+  }
+  .search-clear:hover { color: var(--text-primary); background: var(--hover); }
+
   /* Sort dropdown */
   .sort-dropdown { position: relative; }
   .sort-trigger {
@@ -885,8 +907,8 @@
     font-variant-numeric: tabular-nums;
   }
   .renewal-badge-overdue { background: rgba(237, 63, 63, 0.12); color: var(--error); }
-  .renewal-badge-today { background: rgba(237, 63, 63, 0.12); color: var(--error); }
-  .renewal-badge-urgent { background: rgba(255, 176, 32, 0.15); color: #d4940a; }
+  .renewal-badge-overdue-mild { background: rgba(245, 130, 32, 0.12); color: #E07020; }
+  .renewal-badge-today { background: rgba(255, 176, 32, 0.15); color: #C08A00; }
   .renewal-badge-soon { background: rgba(255, 176, 32, 0.10); color: var(--warning); }
   .renewal-badge-normal { background: var(--primary-tint); color: var(--primary); }
   .renewal-badge-far { background: var(--card); color: var(--text-secondary); }
@@ -979,8 +1001,17 @@
   .detail-item { display: flex; flex-direction: column; gap: 3px; }
   .detail-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
   .detail-value { font-size: 13px; color: var(--text-primary); word-break: break-all; }
-  .detail-item a { font-size: 13px; color: var(--primary); word-break: break-all; }
+  .detail-item a { font-size: 13px; color: var(--primary); word-break: break-all; text-decoration: none; }
   .detail-item a:hover { text-decoration: underline; }
+  .detail-url-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: var(--primary-faint);
+    border-radius: var(--radius-sm); transition: all var(--transition);
+    max-width: 100%;
+  }
+  .detail-url-link:hover { background: var(--primary-tint); }
+  .detail-url-link svg { flex-shrink: 0; }
+  .detail-url-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .detail-actions { display: flex; justify-content: flex-end; }
   .btn-detail-edit {
     padding: 6px 14px; background: var(--card); border: 1px solid var(--border);

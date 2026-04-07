@@ -9,7 +9,6 @@ export default {
   'nav.light_mode': 'Light Mode',
   'nav.dark_mode': 'Dark Mode',
   'nav.logout': 'Logout',
-  'nav.version': 'v0.2.2',
 
   // --- Login ---
   'login.tagline': 'AI Agent-Native Subscription Management',
@@ -120,6 +119,17 @@ export default {
   'subs.created_at': 'Created',
   'subs.more': 'More',
   'subs.less': 'Less',
+  'subs.custom_category': 'Custom Category',
+  'subs.custom_option': '✏️ Custom...',
+  'subs.enter_custom_category': 'Enter custom category',
+  'subs.remind': 'Remind',
+  'subs.select_all': 'Select All',
+  'subs.deselect': 'Deselect',
+  'subs.batch_selected': '{count} selected',
+  'subs.batch_confirm_status': 'Change {count} items to "{label}"?',
+  'subs.batch_confirm_delete': 'Delete {count} items? Cannot be undone!',
+  'subs.batch_updated': 'Updated {count} items',
+  'subs.batch_deleted': 'Deleted {count} items',
 
   // --- Calendar ---
   'calendar.title': 'Calendar',
@@ -252,16 +262,37 @@ export default {
   'common.min_ago': '{min} min ago',
   'common.hour_ago': '{hour}h ago',
   'common.day_ago': '{day}d ago',
+  'common.updated': 'Updated',
+  'common.added': 'Added',
+  'common.deleted': 'Deleted',
+  'common.required': 'required',
+  'common.delete_failed': 'Delete failed',
+  'common.save_failed': 'Save failed',
+  'common.export_failed': 'Export failed',
+  'common.import_failed': 'Import failed',
+  'common.imported_records': 'Imported {count} records',
 
   // --- Charts ---
   'chart.monthly_trend': 'Monthly Spending Trend',
   'chart.category_dist': 'Category Distribution',
   'chart.amount': 'Amount',
   'chart.average': 'Average',
+  'chart.no_data': 'No data',
+  'chart.no_trend': 'No trend data yet',
 
   // --- Batch ---
   'subs.batch': 'Batch',
   'subs.batch_cancel': 'Cancel',
+
+  // --- Login Mobile ---
+  'login.mobile_feat1': 'AI Agent Native',
+  'login.mobile_feat2': 'Smart Analytics',
+  'login.mobile_feat3': 'Chat to Manage',
+  'login.mobile_feat4': 'Open Source · Self-hosted',
+
+  // --- 404 ---
+  'error.not_found': 'Page not found',
+  'error.back_home': 'Back to Overview',
 
   // --- Units ---
   'overview.per_day': '/d',

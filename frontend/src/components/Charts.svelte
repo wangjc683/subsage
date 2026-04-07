@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { getCategoryIcon, getCategoryName, theme } from '../stores/index.js';
-  import { t } from '../i18n/index.js';
+  import { t, locale } from '../i18n/index.js';
   import { Chart, registerables } from 'chart.js';
   Chart.register(...registerables);
 
@@ -96,7 +96,15 @@
       trendChart = new Chart(trendCtx, {
         type: 'bar',
         data: {
-          labels: trendData.map(t => t.month),
+          labels: trendData.map(t => {
+            // Format '2025-05' to 'May' or '5月' based on locale
+            const [y, m] = t.month.split('-');
+            const d = new Date(parseInt(y), parseInt(m) - 1);
+            const loc = $locale === 'zh' ? 'zh-CN' : 'en-US';
+            const short = d.toLocaleDateString(loc, { month: 'short' });
+            // Show year suffix for Jan or if there are cross-year entries
+            return parseInt(m) === 1 ? `${short} '${y.slice(2)}` : short;
+          }),
           datasets: [
             {
               label: tFunc('chart.amount'),
@@ -187,7 +195,7 @@
   {#if trendData.length > 0}
     <div class="chart-container chart-container-wide"><canvas id="trendChart"></canvas></div>
   {:else}
-    <div class="empty-chart">No trend data yet</div>
+    <div class="empty-chart">{$t('chart.no_trend')}</div>
   {/if}
 {:else if categoryData.length > 0 || trendData.length > 0}
   <div class="charts-grid animate-fade-in" style="animation-delay: 120ms">
@@ -206,7 +214,7 @@
           {/each}
         </div>
       {:else}
-        <div class="empty-chart">No data</div>
+        <div class="empty-chart">{$t('chart.no_data')}</div>
       {/if}
     </div>
     <div class="chart-card">
@@ -214,7 +222,7 @@
       {#if trendData.length > 0}
         <div class="chart-container chart-container-wide"><canvas id="trendChart"></canvas></div>
       {:else}
-        <div class="empty-chart">No trend data yet</div>
+        <div class="empty-chart">{$t('chart.no_trend')}</div>
       {/if}
     </div>
   </div>
