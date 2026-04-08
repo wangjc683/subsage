@@ -210,7 +210,8 @@ export function getCategoryColor(id) {
 
 // These now require a t function to be passed for i18n
 export function getCategoryName(id, tFunc) {
-  if (tFunc) return tFunc(`cat.${id}`) || id;
+  const knownIds = categories.map(c => c.id);
+  if (tFunc && knownIds.includes(id)) return tFunc(`cat.${id}`) || id;
   return id;
 }
 

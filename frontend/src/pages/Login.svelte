@@ -297,7 +297,7 @@
     align-items: center;
     justify-content: center;
     background: rgba(255,255,255,0.12);
-    border-radius: 10px;
+    border-radius: var(--radius);
     flex-shrink: 0;
     transition: all 0.3s ease;
   }

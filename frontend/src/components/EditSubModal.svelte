@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { settings, categories, getCategoryName, cycleIds, toasts } from '../stores/index.js';
+  import { settings, categories, getCategoryName, getCategoryIcon, cycleIds, toasts, subs } from '../stores/index.js';
   import { t, locale } from '../i18n/index.js';
 
   $: dateLang = $locale === 'zh' ? 'zh-CN' : 'en';
@@ -20,6 +20,10 @@
 
   $: isCustomCategory = form.category === '__custom__';
   $: editing = sub !== null;
+
+  // Extract custom categories from existing subscriptions
+  $: predefinedIds = new Set(categories.map(c => c.id));
+  $: customCategories = [...new Set(($subs || []).map(s => s.category).filter(c => c && !predefinedIds.has(c)))].sort();
 
   let formInitialized = false;
 
@@ -149,6 +153,10 @@
               <label for="field-category">{$t('subs.category')}</label>
               <select id="field-category" bind:value={form.category} on:change={() => { if (form.category !== '__custom__') customCategoryInput = ''; }}>
                 {#each categories as cat}<option value={cat.id}>{cat.icon} {getCategoryName(cat.id, $t)}</option>{/each}
+                {#if customCategories.length > 0}
+                  <option disabled>──────</option>
+                  {#each customCategories as cc}<option value={cc}>{getCategoryIcon(cc)} {cc}</option>{/each}
+                {/if}
                 <option disabled>──────</option>
                 <option value="__custom__">{$t('subs.custom_option')}</option>
               </select>

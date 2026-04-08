@@ -143,6 +143,16 @@ export default {
   'calendar.weekdays': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   'calendar.no_subs': 'No subscriptions on this day',
   'calendar.no_renewals_month': 'No renewals this month 🎉',
+  'calendar.view_month': 'Month',
+  'calendar.view_year': 'Year',
+  'calendar.year_title': 'Year Overview',
+  'calendar.vs_last_month': 'vs last month',
+  'calendar.no_data': 'No data',
+  'calendar.total_paid_est': 'Est. total paid',
+  'calendar.cycles_paid': '{n} cycles paid',
+  'calendar.since_start': 'Subscribed {days}d',
+  'calendar.click_month': 'Click to view month',
+  'calendar.yearly_total': 'Yearly Total',
 
   // --- Settings ---
   'settings.title': 'Settings',

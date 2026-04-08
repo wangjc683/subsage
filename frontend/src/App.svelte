@@ -17,7 +17,8 @@
   }
 
   function handleRoute() {
-    const hash = window.location.hash.replace('#/', '') || 'overview';
+    const rawHash = window.location.hash.replace('#/', '') || 'overview';
+    const hash = rawHash.split('?')[0]; // Strip query params for route matching
 
     if (hash === 'login') {
       if (isLoggedIn()) {

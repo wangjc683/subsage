@@ -123,6 +123,17 @@
   }
 
   onMount(() => {
+    // Read ?cat= from URL hash for cross-page drill-down
+    const hashParts = window.location.hash.split('?');
+    if (hashParts[1]) {
+      const params = new URLSearchParams(hashParts[1]);
+      const cat = params.get('cat');
+      if (cat) {
+        filterCategory = cat;
+        // Clean up URL without triggering hashchange
+        history.replaceState(null, '', hashParts[0]);
+      }
+    }
     window.addEventListener('keydown', handleKeydown);
     window.addEventListener('click', handleClickOutside, true);
   });
@@ -593,7 +604,7 @@
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
     color: var(--text-primary); font-size: 14px; transition: all var(--transition);
   }
-  .btn-batch:hover { background: var(--hover); }
+  .btn-batch:hover { background: var(--primary-faint); border-color: var(--primary); color: var(--primary); }
   .btn-batch:active { transform: scale(0.96); }
   .btn-batch.active { border-color: var(--primary); color: var(--primary); background: var(--primary-faint); }
 
@@ -610,8 +621,9 @@
     display: flex;
     gap: 6px;
     margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-light);
     overflow-x: auto;
-    padding-bottom: 4px;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -619,7 +631,7 @@
 
   .pill {
     padding: 6px 14px;
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
@@ -674,9 +686,18 @@
   .checkbox.checked { background: var(--primary); border-color: var(--primary); color: white; }
 
   /* Status pills */
-  .status-pills { margin-bottom: 0; }
+  .status-pills { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
   .pill-status {
-    display: inline-flex; align-items: center; gap: 5px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: var(--radius-xl);
+    background: var(--card); border: 1px solid var(--border);
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    transition: all var(--transition); cursor: pointer;
+  }
+  .pill-status:hover { background: var(--hover); color: var(--text-primary); }
+  .pill-status.active {
+    background: var(--primary-tint); border-color: var(--primary);
+    color: var(--primary); font-weight: 600;
   }
   .status-dot {
     width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
@@ -860,14 +881,14 @@
   .sub-name-group { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
   .sub-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .status-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 12px; flex-shrink: 0; }
+  .status-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--radius); flex-shrink: 0; }
   .status-active { background: rgba(68, 185, 49, 0.12); color: var(--success); }
   .status-paused { background: rgba(255, 176, 32, 0.12); color: var(--warning); }
   .status-cancelled { background: rgba(146, 146, 146, 0.12); color: var(--text-tertiary); }
 
   .discount-badge {
     display: inline-flex; font-size: 11px; font-weight: 500; padding: 2px 7px;
-    background: rgba(68, 185, 49, 0.12); color: var(--success); border-radius: 8px;
+    background: rgba(68, 185, 49, 0.12); color: var(--success); border-radius: var(--radius-sm);
     flex-shrink: 0;
   }
   .discount-saved { font-size: 12px; color: var(--success); }
@@ -903,7 +924,7 @@
   /* Renewal badge */
   .renewal-badge {
     font-size: 12px; font-weight: 500; padding: 3px 10px;
-    border-radius: 20px; white-space: nowrap;
+    border-radius: var(--radius-xl); white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
   .renewal-badge-overdue { background: rgba(237, 63, 63, 0.12); color: var(--error); }
@@ -913,7 +934,7 @@
   .renewal-badge-normal { background: var(--primary-tint); color: var(--primary); }
   .renewal-badge-far { background: var(--card); color: var(--text-secondary); }
 
-  /* Edit button - always visible */
+  /* Edit button - hidden by default, shown on card hover */
   .btn-edit-card {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 5px 12px; border-radius: var(--radius-sm);
@@ -922,21 +943,25 @@
     border: 1px solid var(--border);
     transition: all var(--transition); white-space: nowrap;
     flex-shrink: 0;
+    opacity: 0; pointer-events: none;
   }
+  .sub-card:hover .btn-edit-card { opacity: 1; pointer-events: auto; }
   .btn-edit-card:hover {
     color: var(--primary); border-color: var(--primary);
     background: var(--primary-faint);
   }
   .btn-edit-card:active { transform: scale(0.95); }
 
-  /* Delete icon button */
+  /* Delete icon button - hidden by default, shown on card hover */
   .btn-delete-card {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; border-radius: var(--radius-sm);
     color: var(--text-tertiary); background: transparent;
     border: 1px solid transparent;
     transition: all var(--transition); flex-shrink: 0;
+    opacity: 0; pointer-events: none;
   }
+  .sub-card:hover .btn-delete-card { opacity: 1; pointer-events: auto; }
   .btn-delete-card:hover {
     color: var(--error); border-color: var(--error);
     background: rgba(237, 63, 63, 0.08);
@@ -1040,7 +1065,7 @@
   .category-chip {
     display: flex; align-items: center; gap: 6px;
     padding: 7px 12px;
-    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl);
     font-size: 13px; font-weight: 500; color: var(--text-primary);
     transition: all var(--transition); flex-shrink: 0; white-space: nowrap;
   }
@@ -1058,7 +1083,7 @@
   }
   .pill-sm {
     display: inline-flex; align-items: center; gap: 4px;
-    padding: 6px 10px; border-radius: 16px;
+    padding: 6px 10px; border-radius: var(--radius-lg);
     font-size: 12px; font-weight: 500; white-space: nowrap;
     background: var(--card); border: 1px solid var(--border); color: var(--text-secondary);
     transition: all var(--transition);
@@ -1079,7 +1104,7 @@
   .sheet-panel {
     width: 100%; max-width: 500px; max-height: 70vh;
     background: var(--surface);
-    border-radius: 16px 16px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
@@ -1111,7 +1136,7 @@
   .sheet-item-name { flex: 1; font-weight: 500; }
   .sheet-item-count {
     font-size: 12px; color: var(--text-tertiary);
-    background: var(--surface); padding: 2px 7px; border-radius: 10px;
+    background: var(--surface); padding: 2px 7px; border-radius: var(--radius);
     font-weight: 500;
   }
   .sheet-item.active .sheet-item-count { color: var(--primary); background: rgba(61, 124, 95, 0.08); }

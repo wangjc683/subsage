@@ -119,8 +119,8 @@
               data: trendData.map(() => avg),
               type: 'line',
               borderColor: '#FFB020',
-              borderWidth: 2,
-              borderDash: [6, 4],
+              borderWidth: 2.5,
+              borderDash: [8, 5],
               pointRadius: 0,
               fill: false,
               order: 1

@@ -94,7 +94,7 @@
     font-size: 12px;
     font-weight: 500;
     padding: 4px 10px;
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }

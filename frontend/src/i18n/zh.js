@@ -143,6 +143,16 @@ export default {
   'calendar.weekdays': ['一', '二', '三', '四', '五', '六', '日'],
   'calendar.no_subs': '当日无订阅',
   'calendar.no_renewals_month': '本月没有续费 🎉',
+  'calendar.view_month': '月',
+  'calendar.view_year': '年',
+  'calendar.year_title': '年度总览',
+  'calendar.vs_last_month': '环比上月',
+  'calendar.no_data': '无数据',
+  'calendar.total_paid_est': '预估累计',
+  'calendar.cycles_paid': '已付 {n} 期',
+  'calendar.since_start': '已订阅 {days} 天',
+  'calendar.click_month': '点击查看月度详情',
+  'calendar.yearly_total': '年度合计',
 
   // --- Settings ---
   'settings.title': '设置',

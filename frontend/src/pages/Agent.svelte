@@ -202,7 +202,7 @@
 
   .status-badge {
     display: flex; align-items: center; gap: 6px;
-    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    padding: 6px 14px; border-radius: var(--radius-xl); font-size: 12px; font-weight: 600;
     background: var(--hover); color: var(--text-secondary);
   }
   .status-badge.active { background: rgba(68, 185, 49, 0.1); color: var(--success); }
@@ -228,13 +228,14 @@
   }
 
   .btn-copy-main {
-    display: block; width: 100%; padding: 16px;
-    background: var(--primary); color: white; border: none;
-    border-radius: var(--radius); font-size: 16px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px;
+    background: var(--primary-tint); color: var(--primary); border: 1px solid var(--primary);
+    border-radius: var(--radius); font-size: 15px; font-weight: 600;
     transition: all var(--transition); cursor: pointer;
     margin-bottom: 24px;
   }
-  .btn-copy-main:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(61, 124, 95, 0.25); }
+  .btn-copy-main:hover { background: var(--primary); color: white; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(61, 124, 95, 0.25); }
   .btn-copy-main:active { transform: translateY(0); }
 
   /* Key Section */
@@ -274,6 +275,7 @@
     padding: 9px 12px; border-radius: var(--radius-sm);
     transition: all var(--transition);
   }
+  .activity-item:nth-child(even) { background: var(--primary-faint); }
   .activity-item:hover { background: var(--hover); }
   .act-desc { font-size: 13px; }
   .act-time { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }

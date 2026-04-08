@@ -585,7 +585,7 @@
   .rate-status-text { font-size: 13px; color: var(--text-secondary); }
 
   .rate-grid {
-    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px;
   }
   .rate-chip {
     display: flex; align-items: center; gap: 8px;

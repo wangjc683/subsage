@@ -196,6 +196,7 @@ See the full changelog at [GitHub Releases](https://github.com/wangjc683/subsage
 
 | Version | Highlights |
 |---------|-----------|
+| v0.3.0 | Calendar heatmap visualization, cross-page category drill-down, comprehensive UI/UX audit (11 fixes: hover-reveal actions, unified pill styles, design token migration, trend line polish) |
 | v0.2.3 | Delete bug fix, full i18n audit (zero hardcoded strings), page transitions, calendar category colors, graduated overdue badges, keyboard shortcuts, dark mode polish |
 | v0.2.2 | List/grid view toggle, modal form redesign (segmented controls, styled selects), overview layout merge, dynamic daily cost hints, a11y cleanup |
 | v0.2.1 | Calendar redesign (inline details, stats bar, smart navigation), Settings theme dropdown fix |

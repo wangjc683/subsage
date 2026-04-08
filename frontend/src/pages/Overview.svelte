@@ -288,7 +288,7 @@
             {#each categoryData as cat}
               {@const pct = catMax > 0 ? (cat.monthly_total / catMax * 100) : 0}
               {@const catColor = getCategoryColor(cat.category)}
-              <div class="cat-bar-row">
+              <button class="cat-bar-row" on:click={() => window.location.hash = `#/subs?cat=${cat.category}`}>
                 <div class="cat-bar-label">
                   <span class="cat-bar-icon" style="background: {catColor.bg}; color: {catColor.text}">{getCategoryIcon(cat.category)}</span>
                   <span class="cat-bar-name">{getCategoryName(cat.category, $t)}</span>
@@ -301,7 +301,8 @@
                   <span class="cat-val-main">{formatPrice(cat.monthly_total, overview.base_currency)}{$t('overview.per_month')}</span>
                   <span class="cat-val-sub">{formatPrice(cat.monthly_total * 12, overview.base_currency)}{$t('subs.per_year')} · {formatPrice(cat.monthly_total / 30, overview.base_currency)}{$t('overview.per_day')}</span>
                 </div>
-              </div>
+                <svg class="cat-bar-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
             {/each}
           </div>
         </div>
@@ -396,7 +397,7 @@
   .stat-trend {
     display: inline-flex; align-items: center; gap: 2px;
     font-size: 12px; font-weight: 600; margin-top: 6px;
-    padding: 2px 8px; border-radius: 12px;
+    padding: 2px 8px; border-radius: var(--radius);
   }
   .stat-trend.up { color: var(--error); background: rgba(237, 63, 63, 0.08); }
   .stat-trend.down { color: var(--success); background: rgba(68, 185, 49, 0.08); }
@@ -406,7 +407,7 @@
   .agent-badge {
     display: flex; align-items: center; gap: 6px;
     padding: 5px 14px; font-size: 12px; font-weight: 500;
-    border-radius: 20px; border: 1px solid var(--border);
+    border-radius: var(--radius-xl); border: 1px solid var(--border);
     background: var(--surface); color: var(--text-secondary);
     transition: all var(--transition); cursor: pointer;
     white-space: nowrap;
@@ -439,7 +440,7 @@
   .panel-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
   .panel-title { font-size: 15px; font-weight: 600; }
   .panel-badge {
-    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius);
     background: var(--primary-tint); color: var(--primary);
   }
 
@@ -452,11 +453,11 @@
     background: none; width: 100%; text-align: left;
     font-family: inherit; color: inherit;
   }
-  .upcoming-item:hover { background: var(--hover); border-color: var(--primary); }
+  .upcoming-item:hover { background: var(--hover); border-color: var(--border); border-left: 2px solid var(--primary); }
   .upcoming-icon {
     font-size: 16px; width: 32px; height: 32px;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 8px; flex-shrink: 0;
+    border-radius: var(--radius-sm); flex-shrink: 0;
   }
   .upcoming-info { flex: 1; min-width: 0; }
   .upcoming-name { font-weight: 600; font-size: 13px; }
@@ -464,7 +465,7 @@
 
   .renewal-tag {
     font-size: 11px; font-weight: 600; padding: 3px 10px;
-    border-radius: 20px; white-space: nowrap; font-variant-numeric: tabular-nums;
+    border-radius: var(--radius-xl); white-space: nowrap; font-variant-numeric: tabular-nums;
   }
   .renewal-tag.overdue-severe { background: rgba(237, 63, 63, 0.12); color: var(--error); }
   .renewal-tag.overdue-mild { background: rgba(245, 130, 32, 0.12); color: #E07020; }
@@ -486,16 +487,28 @@
   /* Category Bars */
   .cat-bars { display: flex; flex-direction: column; gap: 12px; }
   .cat-bar-row {
-    display: grid; grid-template-columns: 140px 1fr auto; gap: 12px;
+    display: grid; grid-template-columns: 140px 1fr auto 16px; gap: 12px;
     align-items: center; padding: 6px 8px;
-    border-radius: var(--radius-sm); transition: background 0.2s ease;
+    border-radius: var(--radius-sm); transition: all 0.2s ease;
+    cursor: pointer; border: none; background: none;
+    width: 100%; text-align: left; font-family: inherit;
+    color: inherit;
   }
   .cat-bar-row:hover { background: var(--hover); }
+  .cat-bar-row:active { transform: scale(0.995); }
+  .cat-bar-arrow {
+    color: var(--text-tertiary); opacity: 0;
+    transition: all 0.2s ease;
+  }
+  .cat-bar-row:hover .cat-bar-arrow {
+    opacity: 1; color: var(--primary);
+    transform: translateX(2px);
+  }
   .cat-bar-label { display: flex; align-items: center; gap: 8px; }
   .cat-bar-icon {
     font-size: 14px; width: 28px; height: 28px;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 6px; flex-shrink: 0;
+    border-radius: var(--radius-sm); flex-shrink: 0;
   }
   .cat-bar-name { font-size: 13px; font-weight: 500; }
   .cat-bar-count { font-size: 11px; color: var(--text-tertiary); }
