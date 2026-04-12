@@ -39,7 +39,22 @@ func (h *StatsHandler) Overview(c echo.Context) error {
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
+
+		// Lazy advance auto_renew subscriptions
+		if boolVal(s.AutoRenew, true) && s.NextRenewal != "" {
+			newDate := advanceRenewal(s.NextRenewal, s.Cycle)
+			if newDate != s.NextRenewal {
+				s.NextRenewal = newDate
+				go h.db.Exec("UPDATE subscriptions SET next_renewal=?, updated_at=datetime('now') WHERE id=?", newDate, s.ID)
+			}
+		}
+
 		active = append(active, s)
+
+		// Skip expired non-auto-renew subscriptions from spending calculation
+		if isExpiredNonRenew(s) {
+			continue
+		}
 
 		m := monthlyEquivalent(s.Price, s.Cycle)
 		y := yearlyEquivalent(s.Price, s.Cycle)
@@ -70,6 +85,16 @@ func (h *StatsHandler) Overview(c echo.Context) error {
 		defer urows.Close()
 		for urows.Next() {
 			s, _ := ScanSub(urows)
+
+			// Lazy advance auto_renew subscriptions
+			if boolVal(s.AutoRenew, true) {
+				newDate := advanceRenewal(s.NextRenewal, s.Cycle)
+				if newDate != s.NextRenewal {
+					s.NextRenewal = newDate
+					go h.db.Exec("UPDATE subscriptions SET next_renewal=?, updated_at=datetime('now') WHERE id=?", newDate, s.ID)
+				}
+			}
+
 			days := daysUntil(s.NextRenewal)
 			if days != nil && *days >= 0 && *days <= 7 {
 				upcomingCount++
@@ -77,7 +102,8 @@ func (h *StatsHandler) Overview(c echo.Context) error {
 					upcoming = append(upcoming, s)
 				}
 			}
-			if days != nil && *days < 0 {
+			// Only count overdue for non-auto-renew (auto_renew=true are already advanced)
+			if days != nil && *days < 0 && !boolVal(s.AutoRenew, true) {
 				overdueCount++
 			}
 		}
@@ -110,22 +136,33 @@ func (h *StatsHandler) ByCategory(c echo.Context) error {
 	}
 	defer catRows.Close()
 
-	catMap := map[string]*model.CategoryStats{}
-	for catRows.Next() {
-		var cat, cur, cycle, status string
-		var price float64
-		catRows.Scan(&cat, &price, &cur, &cycle, &status)
+	// Need full subscription data for auto_renew filtering
+	fullRows, err2 := h.db.Query(
+		"SELECT "+SubColumns+" FROM subscriptions",
+	)
+	if err2 != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err2.Error()})
+	}
+	defer fullRows.Close()
+	catRows.Close()
 
-		if _, ok := catMap[cat]; !ok {
-			catMap[cat] = &model.CategoryStats{Category: cat}
+	catMap := map[string]*model.CategoryStats{}
+	for fullRows.Next() {
+		s, scanErr := ScanSub(fullRows)
+		if scanErr != nil {
+			continue
 		}
 
-		catMap[cat].Count++
-		if status == "active" {
-			m := monthlyEquivalent(price, cycle)
-			rate := h.convertRate(cur, baseCurrency, rates)
-			catMap[cat].MonthlyTotal += m * rate
-			catMap[cat].YearlyTotal += m * rate * 12
+		if _, ok := catMap[s.Category]; !ok {
+			catMap[s.Category] = &model.CategoryStats{Category: s.Category}
+		}
+
+		catMap[s.Category].Count++
+		if s.Status == "active" && !isExpiredNonRenew(s) {
+			m := monthlyEquivalent(s.Price, s.Cycle)
+			rate := h.convertRate(s.Currency, baseCurrency, rates)
+			catMap[s.Category].MonthlyTotal += m * rate
+			catMap[s.Category].YearlyTotal += m * rate * 12
 		}
 	}
 
@@ -246,22 +283,28 @@ func (h *StatsHandler) Summary(c echo.Context) error {
 	h.db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status = 'cancelled'").Scan(&cancelledCount)
 	totalCount := activeCount + pausedCount + cancelledCount
 
-	// Calculate monthly spend
-	rows, err := h.db.Query("SELECT price, currency, cycle FROM subscriptions WHERE status = 'active'")
+	// Calculate monthly spend (excluding expired non-auto-renew)
+	sumRows, err := h.db.Query(
+		"SELECT "+SubColumns+" FROM subscriptions WHERE status = 'active'",
+	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
-	defer rows.Close()
+	defer sumRows.Close()
 
 	monthlyTotal := 0.0
 	var topName string
 	var topPrice float64
-	for rows.Next() {
-		var price float64
-		var cur, cycle string
-		rows.Scan(&price, &cur, &cycle)
-		m := monthlyEquivalent(price, cycle)
-		rate := h.convertRate(cur, baseCurrency, rates)
+	for sumRows.Next() {
+		s, scanErr := ScanSub(sumRows)
+		if scanErr != nil {
+			continue
+		}
+		if isExpiredNonRenew(s) {
+			continue
+		}
+		m := monthlyEquivalent(s.Price, s.Cycle)
+		rate := h.convertRate(s.Currency, baseCurrency, rates)
 		monthlyTotal += m * rate
 	}
 
@@ -369,6 +412,14 @@ func (h *StatsHandler) Upcoming(c echo.Context) error {
 	result := []upcomingItem{}
 	for rows.Next() {
 		s, _ := ScanSub(rows)
+		// Lazy advance auto_renew subscriptions
+		if boolVal(s.AutoRenew, true) {
+			newDate := advanceRenewal(s.NextRenewal, s.Cycle)
+			if newDate != s.NextRenewal {
+				s.NextRenewal = newDate
+				go h.db.Exec("UPDATE subscriptions SET next_renewal=?, updated_at=datetime('now') WHERE id=?", newDate, s.ID)
+			}
+		}
 		d := daysUntil(s.NextRenewal)
 		if d != nil && *d >= 0 && *d <= days {
 			result = append(result, upcomingItem{Subscription: s, DaysUntil: *d})

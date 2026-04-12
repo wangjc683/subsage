@@ -79,14 +79,17 @@
       })
     : [];
 
-  // Renewal tag helper
-  function getRenewalTag(days) {
+  // Renewal tag helper (tiers aligned with SubList badges)
+  function getRenewalTag(days, sub) {
     if (days === null) return { text: '—', cls: '' };
-    if (days < -3) return { text: $t('overview.overdue_days', { days: Math.abs(days) }), cls: 'overdue-severe' };
-    if (days < 0) return { text: $t('overview.overdue_days', { days: Math.abs(days) }), cls: 'overdue-mild' };
+    const isAuto = sub && sub.auto_renew !== false;
+    if (days < -3) return { text: isAuto ? $t('overview.overdue_days', { days: Math.abs(days) }) : $t('subs.expired_pending', { days: Math.abs(days) }), cls: 'overdue-severe' };
+    if (days < 0) return { text: isAuto ? $t('overview.overdue_days', { days: Math.abs(days) }) : $t('subs.expired_pending', { days: Math.abs(days) }), cls: 'overdue-mild' };
     if (days === 0) return { text: $t('overview.today'), cls: 'today' };
-    if (days <= 3) return { text: $t('overview.days_later', { days }), cls: 'soon' };
-    return { text: $t('overview.days_later', { days }), cls: 'normal' };
+    if (days <= 3) return { text: isAuto ? $t('subs.auto_renews_in', { days }) : $t('subs.expires_in', { days }), cls: 'urgent' };
+    if (days <= 7) return { text: isAuto ? $t('subs.auto_renews_in', { days }) : $t('subs.expires_in', { days }), cls: 'soon' };
+    if (days <= 30) return { text: isAuto ? $t('subs.auto_renews_in', { days }) : $t('subs.expires_in', { days }), cls: 'normal' };
+    return { text: isAuto ? $t('subs.auto_renews_in', { days }) : $t('subs.expires_in', { days }), cls: 'far' };
   }
 
   // Nearest renewals: all active subs with next_renewal, sorted by date, top 5
@@ -248,7 +251,7 @@
           <div class="upcoming-list">
             {#each nearestRenewals as sub}
               {@const d = sub._days}
-              {@const tag = getRenewalTag(d)}
+              {@const tag = getRenewalTag(d, sub)}
               {@const catColor = getCategoryColor(sub.category)}
               <button class="upcoming-item" on:click={() => openEditSub(sub)}>
                 <div class="upcoming-icon" style="background: {catColor.bg}; color: {catColor.text}">
@@ -470,8 +473,10 @@
   .renewal-tag.overdue-severe { background: rgba(237, 63, 63, 0.12); color: var(--error); }
   .renewal-tag.overdue-mild { background: rgba(245, 130, 32, 0.12); color: #E07020; }
   .renewal-tag.today { background: rgba(255, 176, 32, 0.15); color: #C08A00; }
-  .renewal-tag.soon { background: rgba(255, 176, 32, 0.12); color: var(--warning); }
+  .renewal-tag.urgent { background: rgba(245, 130, 32, 0.12); color: #E07020; font-weight: 600; }
+  .renewal-tag.soon { background: rgba(245, 158, 11, 0.14); color: #B47A00; }
   .renewal-tag.normal { background: var(--primary-tint); color: var(--primary); }
+  .renewal-tag.far { background: var(--card); color: var(--text-secondary); }
 
   .btn-see-all {
     display: block; width: 100%; margin-top: 12px; padding: 8px;

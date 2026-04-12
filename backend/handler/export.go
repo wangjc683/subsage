@@ -23,7 +23,7 @@ func (h *ExportHandler) Excel(c echo.Context) error {
 	sheet := "Subscriptions"
 	f.SetSheetName("Sheet1", sheet)
 
-	headers := []string{"名称", "分类", "状态", "价格", "原价", "折扣说明", "币种", "计费周期", "支付方式", "开始日期", "下次续费", "网址", "备注", "提醒天数", "创建时间"}
+	headers := []string{"名称", "分类", "状态", "价格", "原价", "折扣说明", "币种", "计费周期", "支付方式", "开始日期", "下次续费", "自动续费", "网址", "备注", "提醒天数", "创建时间"}
 	categories := map[string]string{
 		"ai": "AI 服务", "video": "视频", "music": "音乐", "software": "软件工具",
 		"dev": "开发者", "cloud": "云服务", "security": "安全隐私",
@@ -43,10 +43,10 @@ func (h *ExportHandler) Excel(c echo.Context) error {
 		Fill:      excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"#3D7C5F"}},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
 	})
-	f.SetCellStyle(sheet, "A1", "O1", style)
+	f.SetCellStyle(sheet, "A1", "P1", style)
 
 	rows, err := h.db.Query(
-		"SELECT name, category, status, price, original_price, discount_note, currency, cycle, payment_method, start_date, next_renewal, url, notes, remind_days, created_at FROM subscriptions ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 WHEN 'cancelled' THEN 2 END",
+		"SELECT name, category, status, price, original_price, discount_note, currency, cycle, payment_method, start_date, next_renewal, auto_renew, url, notes, remind_days, created_at FROM subscriptions ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 WHEN 'cancelled' THEN 2 END",
 	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -56,7 +56,7 @@ func (h *ExportHandler) Excel(c echo.Context) error {
 	rowNum := 2
 	for rows.Next() {
 		var s model.Subscription
-		rows.Scan(&s.Name, &s.Category, &s.Status, &s.Price, &s.OriginalPrice, &s.DiscountNote, &s.Currency, &s.Cycle, &s.PaymentMethod, &s.StartDate, &s.NextRenewal, &s.URL, &s.Notes, &s.RemindDays, &s.CreatedAt)
+		rows.Scan(&s.Name, &s.Category, &s.Status, &s.Price, &s.OriginalPrice, &s.DiscountNote, &s.Currency, &s.Cycle, &s.PaymentMethod, &s.StartDate, &s.NextRenewal, &s.AutoRenew, &s.URL, &s.Notes, &s.RemindDays, &s.CreatedAt)
 
 		originalPriceStr := ""
 		if s.OriginalPrice != nil {
@@ -65,6 +65,11 @@ func (h *ExportHandler) Excel(c echo.Context) error {
 
 		catName := categories[s.Category]
 		if catName == "" { catName = s.Category }
+
+		autoRenewStr := "是"
+		if !boolVal(s.AutoRenew, true) {
+			autoRenewStr = "否"
+		}
 
 		vals := []interface{}{
 			s.Name,
@@ -78,6 +83,7 @@ func (h *ExportHandler) Excel(c echo.Context) error {
 			s.PaymentMethod,
 			s.StartDate,
 			s.NextRenewal,
+			autoRenewStr,
 			s.URL,
 			s.Notes,
 			s.RemindDays,
@@ -146,16 +152,16 @@ func (h *ExportHandler) ImportJSON(c echo.Context) error {
 		if err == sql.ErrNoRows {
 			s.ID = generateID()
 			h.db.Exec(
-				`INSERT INTO subscriptions (id, name, category, status, price, original_price, discount_note, currency, cycle, payment_method, start_date, next_renewal, url, notes, remind_days)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				s.ID, s.Name, s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, s.RemindDays,
+				`INSERT INTO subscriptions (id, name, category, status, price, original_price, discount_note, currency, cycle, payment_method, start_date, next_renewal, url, notes, auto_renew, remind_days)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				s.ID, s.Name, s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, boolVal(s.AutoRenew, true), s.RemindDays,
 			)
 			added++
 		} else if err == nil {
 			h.db.Exec(
-				`UPDATE subscriptions SET category=?, status=?, price=?, original_price=?, discount_note=?, currency=?, cycle=?, payment_method=?, start_date=?, next_renewal=?, url=?, notes=?, remind_days=?, updated_at=datetime('now')
+				`UPDATE subscriptions SET category=?, status=?, price=?, original_price=?, discount_note=?, currency=?, cycle=?, payment_method=?, start_date=?, next_renewal=?, url=?, notes=?, auto_renew=?, remind_days=?, updated_at=datetime('now')
 				 WHERE id=?`,
-				s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, s.RemindDays, existingID,
+				s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, boolVal(s.AutoRenew, true), s.RemindDays, existingID,
 			)
 			updated++
 		}

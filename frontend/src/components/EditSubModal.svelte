@@ -38,6 +38,7 @@
         cycle: sub.cycle, payment_method: sub.payment_method || '',
         start_date: sub.start_date || '', next_renewal: sub.next_renewal || '',
         url: sub.url || '', notes: sub.notes || '',
+        auto_renew: sub.auto_renew !== undefined ? sub.auto_renew : true,
         remind_days: sub.remind_days || 3,
       };
     } else {
@@ -45,7 +46,7 @@
         name: '', category: 'ai', status: 'active', price: '', original_price: '', discount_note: '',
         currency: ($settings && $settings.base_currency) || 'USD',
         cycle: 'monthly', payment_method: '', start_date: '', next_renewal: '',
-        url: '', notes: '', remind_days: 3,
+        url: '', notes: '', auto_renew: true, remind_days: 3,
       };
     }
     formError = '';
@@ -72,6 +73,7 @@
         category: resolvedCategory,
         price: parseFloat(form.price),
         original_price: form.original_price ? parseFloat(form.original_price) : null,
+        auto_renew: form.auto_renew,
         remind_days: parseInt(form.remind_days) || 3,
       };
       if (editing) await updateSub(sub.id, data);
@@ -146,7 +148,7 @@
         {#if formError}<div class="form-error">{formError}</div>{/if}
 
         <div class="form-section">
-          <div class="form-section-label">{$t('subs.name')}</div>
+          <div class="form-section-label">{$t('subs.section_basic')}</div>
           <div class="form-row">
             <div class="form-group flex-1"><label for="field-name">{$t('subs.name')} *</label><input id="field-name" type="text" bind:value={form.name} placeholder={$t('subs.name_placeholder')} /></div>
             <div class="form-group form-auto">
@@ -171,12 +173,12 @@
         </div>
 
         <div class="form-section">
-          <div class="form-section-label">{$t('subs.price')}</div>
+          <div class="form-section-label">{$t('subs.section_billing')}</div>
           <div class="form-row">
             <div class="form-group form-price"><label for="field-price">{$t('subs.price')} *</label><input id="field-price" type="number" step="0.01" bind:value={form.price} placeholder="0.00" /></div>
             <div class="form-group form-auto"><label for="field-currency">{$t('subs.currency')}</label><select id="field-currency" bind:value={form.currency}>{#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}<option value={cur}>{cur}</option>{/each}</select></div>
             <div class="form-group form-auto"><label for="field-cycle">{$t('subs.cycle')}</label><select id="field-cycle" bind:value={form.cycle} on:change={handleCycleChangeForRenewal}>{#each cycleIds as cid}<option value={cid}>{$t(`cycle.${cid}`)}</option>{/each}</select></div>
-            <div class="form-group form-price"><label for="field-orig-price">{$t('subs.original_price')}</label><input id="field-orig-price" type="number" step="0.01" bind:value={form.original_price} placeholder="" /></div>
+            <div class="form-group form-price"><label for="field-orig-price">{$t('subs.original_price')}</label><input id="field-orig-price" type="number" step="0.01" bind:value={form.original_price} placeholder={$t('subs.original_price_placeholder')} /></div>
           </div>
           {#if form.original_price}
             <div class="form-group"><label for="field-discount">{$t('subs.discount_note')}</label><input id="field-discount" type="text" bind:value={form.discount_note} placeholder={$t('subs.discount_note_placeholder')} /></div>
@@ -184,7 +186,7 @@
         </div>
 
         <div class="form-section">
-          <div class="form-section-label">{$t('subs.status')}</div>
+          <div class="form-section-label">{$t('subs.section_renewal')}</div>
           <div class="form-row">
             <div class="form-group flex-1">
               <span class="field-label">{$t('subs.status')}</span>
@@ -195,7 +197,7 @@
                 <button type="button" class="seg-btn" class:active={form.status === 'paused'} on:click={() => form.status = 'paused'}>
                   <span class="seg-dot dot-paused"></span>{$t('status.paused')}
                 </button>
-                <button type="button" class="seg-btn" class:active={form.status === 'cancelled'} on:click={() => form.status = 'cancelled'}>
+                <button type="button" class="seg-btn" class:active={form.status === 'cancelled'} on:click={() => { form.status = 'cancelled'; form.auto_renew = false; }}>
                   <span class="seg-dot dot-cancelled"></span>{$t('status.cancelled')}
                 </button>
               </div>
@@ -216,10 +218,23 @@
             <div class="form-group flex-1"><label for="field-start-date">{$t('subs.start_date')}</label><input id="field-start-date" type="date" lang={dateLang} bind:value={form.start_date} on:change={handleStartDateChange} /></div>
             <div class="form-group flex-1"><label for="field-next-renewal">{$t('subs.next_renewal')}</label><input id="field-next-renewal" type="date" lang={dateLang} bind:value={form.next_renewal} on:change={handleRenewalManualEdit} /></div>
           </div>
+          <div class="form-row" style="align-items: center;">
+            <div class="form-group flex-1">
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <span class="toggle-label">{$t('subs.auto_renew')}</span>
+                  <span class="toggle-hint">{$t('subs.auto_renew_hint')}</span>
+                </div>
+                <button type="button" class="toggle-switch" class:on={form.auto_renew} on:click={() => form.auto_renew = !form.auto_renew} role="switch" aria-checked={form.auto_renew}>
+                  <span class="toggle-knob"></span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="form-section">
-          <div class="form-section-label">{$t('subs.notes')}</div>
+          <div class="form-section-label">{$t('subs.other')}</div>
           <div class="form-group"><label for="field-url">{$t('subs.url')}</label><input id="field-url" type="url" bind:value={form.url} placeholder={$t('subs.url_placeholder')} /></div>
           <div class="form-group"><label for="field-notes">{$t('subs.notes')}</label><textarea id="field-notes" bind:value={form.notes} rows="2" placeholder={$t('subs.notes_placeholder')}></textarea></div>
         </div>
@@ -402,4 +417,28 @@
     /* Make selects full width */
     .form-group select { width: 100%; }
   }
+
+  /* Toggle Switch */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 4px 0;
+  }
+  .toggle-info { display: flex; flex-direction: column; gap: 2px; }
+  .toggle-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .toggle-hint { font-size: 11px; color: var(--text-tertiary); }
+  .toggle-switch {
+    position: relative; width: 44px; height: 24px;
+    background: var(--border); border-radius: 12px;
+    border: none; cursor: pointer; transition: background 0.2s ease;
+    flex-shrink: 0; padding: 0;
+  }
+  .toggle-switch.on { background: var(--primary); }
+  .toggle-knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    background: white; border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-switch.on .toggle-knob { transform: translateX(20px); }
 </style>

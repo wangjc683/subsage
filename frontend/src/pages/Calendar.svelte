@@ -51,7 +51,9 @@
     return d.getFullYear() === year && d.getMonth() === month;
   });
   $: monthlyTotal = currentMonthSubs.length;
-  $: monthlyAmount = currentMonthSubs.reduce((s, sub) => s + sub.price, 0);
+  $: monthlyAmount = currentMonthSubs
+    .filter(s => s.auto_renew !== false || daysUntil(s.next_renewal) === null || daysUntil(s.next_renewal) >= 0)
+    .reduce((s, sub) => s + sub.price, 0);
   $: baseCurrency = $settings?.base_currency || 'USD';
 
   // Max daily spending in current month (for heatmap intensity)
@@ -515,6 +517,13 @@
                       <span>{getCategoryName(sub.category, $t)}</span>
                       <span class="detail-meta-dot">·</span>
                       <span>{$t(`cycle.${sub.cycle}`)}</span>
+                      {#if sub.auto_renew === false}
+                        <span class="detail-meta-dot">·</span>
+                        <span style="color: var(--warning)">⚠️ {$t('subs.expires_in', { days: daysUntil(sub.next_renewal) || '?' })}</span>
+                      {:else}
+                        <span class="detail-meta-dot">·</span>
+                        <span>🔄</span>
+                      {/if}
                       {#if sub.payment_method}
                         <span class="detail-meta-dot">·</span>
                         <span>{sub.payment_method}</span>

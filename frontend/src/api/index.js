@@ -148,3 +148,7 @@ export function regenerateToken() {
 export function getAgentStatus() {
   return request('/agent/status');
 }
+
+export function revealAgentToken() {
+  return request('/agent/status?reveal=1');
+}

@@ -1,18 +1,22 @@
 <script>
   import { onMount } from 'svelte';
-  import { getAgentStatus, regenerateToken } from '../api/index.js';
+  import { getAgentStatus, regenerateToken, revealAgentToken } from '../api/index.js';
   import { t } from '../i18n/index.js';
 
   let status = null;
   let loading = true;
   let installCopied = false;
   let tokenCopied = false;
-  let showTechRef = false;
+  let urlCopied = false;
   let regenerating = false;
   let confirmRegen = false;
+  let revealedToken = null;
+  let revealing = false;
 
   $: baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8321';
   $: installText = $t('agent.install_text', { url: baseUrl });
+  $: agentUrl = `${baseUrl}/api/agent`;
+  $: skillUrl = `${baseUrl}/api/agent/skill.md`;
 
   async function loadStatus() {
     loading = true;
@@ -32,18 +36,41 @@
   }
 
   function copyToken() {
-    if (status?.api_token) {
-      navigator.clipboard.writeText(status.api_token);
+    if (revealedToken) {
+      navigator.clipboard.writeText(revealedToken);
       tokenCopied = true;
       setTimeout(() => tokenCopied = false, 2000);
+    }
+  }
+
+  function copyUrl() {
+    navigator.clipboard.writeText(agentUrl);
+    urlCopied = true;
+    setTimeout(() => urlCopied = false, 2000);
+  }
+
+  async function handleRevealToken() {
+    revealing = true;
+    try {
+      const data = await revealAgentToken();
+      revealedToken = data.api_token;
+      // Auto-hide after 30 seconds
+      setTimeout(() => revealedToken = null, 30000);
+    } catch (e) {
+      console.error('Failed to reveal token:', e);
+    } finally {
+      revealing = false;
     }
   }
 
   async function handleRegenerate() {
     regenerating = true;
     try {
-      await regenerateToken();
+      const data = await regenerateToken();
+      revealedToken = data.api_token;
       await loadStatus();
+      // Auto-hide after 30 seconds
+      setTimeout(() => revealedToken = null, 30000);
     } catch (e) {
       console.error('Failed to regenerate token:', e);
     } finally {
@@ -80,6 +107,10 @@
     return $t('common.day_ago', { day: Math.floor(hours / 24) });
   }
 
+  function methodClass(method) {
+    return { GET: 'method-get', POST: 'method-post', PUT: 'method-put', PATCH: 'method-patch', DELETE: 'method-del' }[method] || '';
+  }
+
   onMount(loadStatus);
 </script>
 
@@ -98,97 +129,135 @@
   </div>
 
   {#if loading}
-    <div class="skeleton" style="height: 300px; border-radius: var(--radius-lg); margin-bottom: 24px;"></div>
+    <div class="skeleton-grid">
+      <div class="skeleton" style="height: 200px; border-radius: var(--radius-lg);"></div>
+      <div class="skeleton" style="height: 180px; border-radius: var(--radius-lg);"></div>
+    </div>
   {:else}
-    <!-- Main Card: Install Skill -->
-    <div class="connect-card animate-fade-in">
-      <div class="connect-header">
-        <h2>{$t('agent.copy_instruction')}</h2>
-        <p>{$t('agent.copy_instruction_desc')}</p>
+
+    <!-- Card 1: Quick Setup -->
+    <div class="card animate-fade-in">
+      <div class="card-header">
+        <div class="card-icon">🚀</div>
+        <div class="card-header-text">
+          <h2>{$t('agent.card_setup_title')}</h2>
+          <p>{$t('agent.card_setup_desc')}</p>
+        </div>
       </div>
 
       <div class="install-block">
         <p class="install-text">{installText}</p>
       </div>
 
-      <button class="btn-copy-main" on:click={copyInstall}>
+      <button class="btn-copy-main" class:copied={installCopied} on:click={copyInstall}>
         {installCopied ? $t('agent.btn_copied') : $t('agent.btn_copy')}
       </button>
 
-      <div class="key-section">
-        <div class="key-row">
-          <div class="key-info">
-            <span class="key-label">{$t('agent.key_label')}</span>
-            <code class="key-value">{status?.api_token_masked || '---'}</code>
-          </div>
-          <div class="key-actions">
-            <button class="key-btn" on:click={copyToken}>
-              {tokenCopied ? $t('agent.key_copied') : $t('agent.key_copy')}
-            </button>
-            {#if confirmRegen}
-              <span class="regen-confirm">
-                <span class="regen-warn">{$t('agent.key_regen_warn')}</span>
-                <button class="key-btn key-btn-danger" on:click={handleRegenerate} disabled={regenerating}>
-                  {regenerating ? '⏳' : $t('agent.key_regen_confirm')}
-                </button>
-                <button class="key-btn" on:click={() => confirmRegen = false}>{$t('agent.key_regen_cancel')}</button>
-              </span>
-            {:else}
-              <button class="key-btn" on:click={() => confirmRegen = true}>{$t('agent.key_regen')}</button>
-            {/if}
-          </div>
-        </div>
-        <div class="key-hint">{$t('agent.connect_url')}: {baseUrl}/api/agent</div>
+      <div class="skill-link">
+        <a href={skillUrl} target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          {$t('agent.view_skill_md')}
+        </a>
       </div>
     </div>
 
-    <!-- Recent Activity -->
-    {#if status?.recent_calls?.length > 0}
-      <div class="activity-card animate-fade-in" style="animation-delay: 60ms">
-        <div class="activity-header">
-          <h2>{$t('agent.recent_activity')}</h2>
-          <span class="activity-count">{$t('agent.activity_today', { today: status.total_calls_today, total: status.total_calls })}</span>
+    <!-- Card 2: Connection Credentials -->
+    <div class="card animate-fade-in" style="animation-delay: 60ms">
+      <div class="card-header">
+        <div class="card-icon">🔑</div>
+        <div class="card-header-text">
+          <h2>{$t('agent.card_credentials_title')}</h2>
+          <p>{$t('agent.card_credentials_desc')}</p>
         </div>
+      </div>
+
+      <div class="credential-rows">
+        <!-- API Token -->
+        <div class="credential-item">
+          <span class="credential-label">API Token</span>
+          <div class="credential-value-row">
+            {#if revealedToken}
+              <code class="credential-code revealed">{revealedToken}</code>
+              <button class="cred-btn" on:click={copyToken}>
+                {tokenCopied ? '✅' : $t('agent.key_copy')}
+              </button>
+              <button class="cred-btn" on:click={() => revealedToken = null}>🙈</button>
+            {:else}
+              <code class="credential-code">{status?.api_token_masked || '---'}</code>
+              <button class="cred-btn" on:click={handleRevealToken} disabled={revealing}>
+                {revealing ? '⏳' : $t('agent.reveal_token')}
+              </button>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Connect URL -->
+        <div class="credential-item">
+          <span class="credential-label">{$t('agent.connect_url')}</span>
+          <div class="credential-value-row">
+            <code class="credential-code">{agentUrl}</code>
+            <button class="cred-btn" on:click={copyUrl}>
+              {urlCopied ? '✅' : $t('agent.key_copy')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Regenerate Token -->
+      <div class="regen-section">
+        {#if confirmRegen}
+          <div class="regen-confirm-bar">
+            <span class="regen-warn">⚠️ {$t('agent.key_regen_warn')}</span>
+            <div class="regen-actions">
+              <button class="cred-btn cred-btn-danger" on:click={handleRegenerate} disabled={regenerating}>
+                {regenerating ? '⏳' : $t('agent.key_regen_confirm')}
+              </button>
+              <button class="cred-btn" on:click={() => confirmRegen = false}>{$t('agent.key_regen_cancel')}</button>
+            </div>
+          </div>
+        {:else}
+          <button class="btn-regen" on:click={() => confirmRegen = true}>
+            {$t('agent.key_regen')}
+          </button>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Card 3: Activity Monitor -->
+    <div class="card animate-fade-in" style="animation-delay: 120ms">
+      <div class="card-header">
+        <div class="card-icon">📊</div>
+        <div class="card-header-text">
+          <h2>{$t('agent.card_activity_title')}</h2>
+          {#if status?.has_activity}
+            <p>{$t('agent.activity_today', { today: status.total_calls_today, total: status.total_calls })}</p>
+          {:else}
+            <p>{$t('agent.card_activity_empty_desc')}</p>
+          {/if}
+        </div>
+      </div>
+
+      {#if status?.recent_calls?.length > 0}
         <div class="activity-list">
-          {#each status.recent_calls as call}
-            <div class="activity-item">
-              <span class="act-desc">{describeCall(call)}</span>
+          {#each status.recent_calls as call, i}
+            <div class="activity-item" style="animation-delay: {i * 30}ms">
+              <div class="act-left">
+                <span class="act-method {methodClass(call.method)}">{call.method}</span>
+                <span class="act-desc">{describeCall(call)}</span>
+              </div>
               <span class="act-time">{timeAgo(call.created_at)}</span>
             </div>
           {/each}
         </div>
-      </div>
-    {/if}
-
-    <!-- Collapsible API Docs -->
-    <button class="tech-toggle" on:click={() => showTechRef = !showTechRef}>
-      {showTechRef ? '▼' : '▶'} {$t('agent.api_docs')}
-    </button>
-    {#if showTechRef}
-      <div class="tech-ref animate-fade-in">
-        <div class="endpoint-list">
-          {#each [
-            { method: 'GET', path: '/agent/subs', desc: 'List subs (?search=keyword)' },
-            { method: 'POST', path: '/agent/subs', desc: 'Create subscription' },
-            { method: 'PUT', path: '/agent/subs/:id', desc: 'Full update' },
-            { method: 'PATCH', path: '/agent/subs/:id', desc: 'Partial update' },
-            { method: 'DELETE', path: '/agent/subs/:id', desc: 'Delete' },
-            { method: 'GET', path: '/agent/subs/duplicates', desc: 'Check duplicates (?name=keyword)' },
-            { method: 'GET', path: '/agent/stats/summary', desc: 'Quick summary' },
-            { method: 'GET', path: '/agent/stats/overview', desc: 'Stats overview' },
-            { method: 'GET', path: '/agent/stats/trend', desc: 'Monthly trend (12mo)' },
-            { method: 'GET', path: '/agent/stats/upcoming', desc: 'Upcoming (?days=N)' },
-            { method: 'GET', path: '/agent/stats/by-category', desc: 'By category' },
-          ] as ep}
-            <div class="endpoint-row">
-              <span class="ep-method" class:get={ep.method === 'GET'} class:post={ep.method === 'POST'} class:put={ep.method === 'PUT'} class:patch={ep.method === 'PATCH'} class:del={ep.method === 'DELETE'}>{ep.method}</span>
-              <code class="ep-path">{ep.path}</code>
-              <span class="ep-desc">{ep.desc}</span>
-            </div>
-          {/each}
+      {:else}
+        <div class="empty-activity">
+          <div class="empty-icon">🤖</div>
+          <p>{$t('agent.no_activity')}</p>
+          <p class="empty-hint">{$t('agent.no_activity_hint')}</p>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </div>
+
   {/if}
 </div>
 
@@ -209,110 +278,127 @@
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-tertiary); }
   .status-badge.active .status-dot { background: var(--success); box-shadow: 0 0 6px rgba(68, 185, 49, 0.5); }
 
-  /* Connect Card */
-  .connect-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); padding: 32px; margin-bottom: 24px;
-  }
-  .connect-header { margin-bottom: 20px; }
-  .connect-header h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-  .connect-header p { font-size: 14px; color: var(--text-secondary); }
+  .skeleton-grid { display: flex; flex-direction: column; gap: 20px; }
 
+  /* Card */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 28px; margin-bottom: 20px;
+    transition: all 0.25s ease;
+  }
+  .card:hover { box-shadow: var(--shadow-sm); border-color: var(--text-tertiary); }
+
+  .card-header { display: flex; gap: 14px; margin-bottom: 20px; }
+  .card-icon { font-size: 28px; flex-shrink: 0; line-height: 1.2; }
+  .card-header-text h2 { font-size: 16px; font-weight: 600; margin-bottom: 3px; }
+  .card-header-text p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+  /* Install block */
   .install-block {
     background: var(--hover); border-radius: var(--radius);
-    padding: 20px 24px; margin-bottom: 20px;
+    padding: 18px 22px; margin-bottom: 16px;
+    border-left: 3px solid var(--primary);
   }
   .install-text {
-    font-size: 15px; line-height: 1.6; color: var(--text-primary);
+    font-size: 14px; line-height: 1.6; color: var(--text-primary);
     margin: 0; word-break: break-all;
   }
 
   .btn-copy-main {
     display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; padding: 14px;
+    width: 100%; padding: 12px;
     background: var(--primary-tint); color: var(--primary); border: 1px solid var(--primary);
-    border-radius: var(--radius); font-size: 15px; font-weight: 600;
+    border-radius: var(--radius); font-size: 14px; font-weight: 600;
     transition: all var(--transition); cursor: pointer;
-    margin-bottom: 24px;
   }
   .btn-copy-main:hover { background: var(--primary); color: white; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(61, 124, 95, 0.25); }
   .btn-copy-main:active { transform: translateY(0); }
+  .btn-copy-main.copied { background: var(--success); color: white; border-color: var(--success); }
 
-  /* Key Section */
-  .key-section { border-top: 1px solid var(--border); padding-top: 18px; }
-  .key-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .key-info { display: flex; align-items: center; gap: 10px; }
-  .key-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-  .key-value {
-    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
-    padding: 4px 10px; background: var(--hover); border-radius: var(--radius-sm);
+  .skill-link { margin-top: 12px; text-align: center; }
+  .skill-link a {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-tertiary);
+    transition: color var(--transition); text-decoration: none;
   }
-  .key-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-  .key-btn {
-    padding: 5px 12px; font-size: 12px; font-weight: 500;
+  .skill-link a:hover { color: var(--primary); }
+
+  /* Credentials */
+  .credential-rows { display: flex; flex-direction: column; gap: 16px; }
+  .credential-item { }
+  .credential-label {
+    display: block; font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  .credential-value-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--hover); border-radius: var(--radius-sm); padding: 8px 12px;
+  }
+  .credential-code {
+    flex: 1; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+    color: var(--text-primary); word-break: break-all;
+  }
+  .credential-code.revealed { color: var(--primary); font-weight: 500; }
+
+  .cred-btn {
+    padding: 4px 10px; font-size: 11px; font-weight: 500;
     border-radius: var(--radius-sm); transition: all var(--transition);
-    background: var(--hover); color: var(--text-secondary); border: none; cursor: pointer;
+    background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border);
+    cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
-  .key-btn:hover { background: var(--primary-tint); color: var(--primary); }
-  .key-btn-danger:hover { background: rgba(237, 63, 63, 0.08); color: var(--error); }
-  .key-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .key-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 8px; }
-  .regen-confirm { display: flex; align-items: center; gap: 6px; }
-  .regen-warn { font-size: 11px; color: var(--error); font-weight: 500; }
+  .cred-btn:hover { background: var(--primary-tint); color: var(--primary); border-color: var(--primary); }
+  .cred-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .cred-btn-danger:hover { background: rgba(237, 63, 63, 0.08); color: var(--error); border-color: var(--error); }
+
+  /* Regenerate */
+  .regen-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .btn-regen {
+    font-size: 12px; color: var(--text-tertiary); background: none; border: none;
+    cursor: pointer; transition: color var(--transition); padding: 0;
+  }
+  .btn-regen:hover { color: var(--text-primary); }
+  .regen-confirm-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .regen-warn { font-size: 12px; color: var(--error); font-weight: 500; }
+  .regen-actions { display: flex; gap: 6px; }
 
   /* Activity */
-  .activity-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
-  }
-  .activity-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .activity-header h2 { font-size: 15px; font-weight: 600; }
-  .activity-count { font-size: 12px; color: var(--text-secondary); }
-
   .activity-list { display: flex; flex-direction: column; gap: 2px; }
   .activity-item {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 9px 12px; border-radius: var(--radius-sm);
+    padding: 10px 12px; border-radius: var(--radius-sm);
     transition: all var(--transition);
   }
   .activity-item:nth-child(even) { background: var(--primary-faint); }
   .activity-item:hover { background: var(--hover); }
+  .act-left { display: flex; align-items: center; gap: 10px; }
+  .act-method {
+    font-family: 'SF Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 3px; min-width: 42px; text-align: center;
+  }
+  .method-get { background: rgba(61, 124, 95, 0.1); color: #3D7C5F; }
+  .method-post { background: rgba(59, 130, 246, 0.1); color: #3B82F6; }
+  .method-put { background: rgba(245, 158, 11, 0.1); color: #F59E0B; }
+  .method-patch { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; }
+  .method-del { background: rgba(237, 63, 63, 0.1); color: #ED3F3F; }
   .act-desc { font-size: 13px; }
   .act-time { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
 
-  /* Tech Reference */
-  .tech-toggle {
-    display: block; width: 100%; padding: 12px 16px;
-    font-size: 13px; color: var(--text-tertiary); font-weight: 500;
-    text-align: left; border: none; background: none;
-    transition: color var(--transition); cursor: pointer;
-  }
-  .tech-toggle:hover { color: var(--text-secondary); }
-
-  .tech-ref {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px; margin-bottom: 24px;
-  }
-  .endpoint-list { display: flex; flex-direction: column; gap: 2px; }
-  .endpoint-row {
-    display: grid; grid-template-columns: 70px 1fr auto; gap: 12px; align-items: center;
-    padding: 8px 10px; border-radius: var(--radius-sm);
-    transition: all var(--transition);
-  }
-  .endpoint-row:hover { background: var(--hover); }
-  .ep-method { font-family: 'SF Mono', monospace; font-size: 11px; font-weight: 700; }
-  .ep-method.get { color: #3D7C5F; }
-  .ep-method.post { color: #3B82F6; }
-  .ep-method.put { color: #F59E0B; }
-  .ep-method.patch { color: #8B5CF6; }
-  .ep-method.del { color: #ED3F3F; }
-  .ep-path { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--text-primary); }
-  .ep-desc { font-size: 12px; color: var(--text-secondary); }
+  /* Empty state */
+  .empty-activity { text-align: center; padding: 32px 16px; }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-activity p { font-size: 14px; color: var(--text-secondary); margin: 0; }
+  .empty-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 6px !important; }
 
   @media (max-width: 768px) {
     .agent-page { padding: 20px 16px; }
-    .key-row { flex-direction: column; align-items: flex-start; gap: 10px; }
-    .endpoint-row { grid-template-columns: 60px 1fr; }
-    .ep-desc { display: none; }
+    .card { padding: 20px; }
+    .card-header { gap: 10px; }
+    .card-icon { font-size: 22px; }
+    .credential-value-row { flex-wrap: wrap; }
+    .credential-code { min-width: 0; }
+    .regen-confirm-bar { flex-direction: column; align-items: flex-start; }
   }
 </style>

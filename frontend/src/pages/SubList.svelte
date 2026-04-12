@@ -85,15 +85,16 @@
 
 
 
-  function renewalBadge(d) {
+  function renewalBadge(d, sub) {
     if (d === null) return null;
-    if (d < -3) return { text: $t('subs.overdue', { days: Math.abs(d) }), cls: 'renewal-badge-overdue' };
-    if (d < 0) return { text: $t('subs.overdue', { days: Math.abs(d) }), cls: 'renewal-badge-overdue-mild' };
+    const isAuto = sub.auto_renew !== false;
+    if (d < -3) return { text: isAuto ? $t('subs.overdue', { days: Math.abs(d) }) : $t('subs.expired_pending', { days: Math.abs(d) }), cls: isAuto ? 'renewal-badge-overdue' : 'renewal-badge-overdue' };
+    if (d < 0) return { text: isAuto ? $t('subs.overdue', { days: Math.abs(d) }) : $t('subs.expired_pending', { days: Math.abs(d) }), cls: isAuto ? 'renewal-badge-overdue-mild' : 'renewal-badge-overdue' };
     if (d === 0) return { text: $t('subs.renews_today'), cls: 'renewal-badge-today' };
-    if (d <= 3) return { text: $t('subs.renews_in', { days: d }), cls: 'renewal-badge-urgent' };
-    if (d <= 7) return { text: $t('subs.renews_in', { days: d }), cls: 'renewal-badge-soon' };
-    if (d <= 30) return { text: $t('subs.renews_in', { days: d }), cls: 'renewal-badge-normal' };
-    return { text: $t('subs.renews_in', { days: d }), cls: 'renewal-badge-far' };
+    if (d <= 3) return { text: isAuto ? $t('subs.auto_renews_in', { days: d }) : $t('subs.expires_in', { days: d }), cls: 'renewal-badge-urgent' };
+    if (d <= 7) return { text: isAuto ? $t('subs.auto_renews_in', { days: d }) : $t('subs.expires_in', { days: d }), cls: 'renewal-badge-soon' };
+    if (d <= 30) return { text: isAuto ? $t('subs.auto_renews_in', { days: d }) : $t('subs.expires_in', { days: d }), cls: 'renewal-badge-normal' };
+    return { text: isAuto ? $t('subs.auto_renews_in', { days: d }) : $t('subs.expires_in', { days: d }), cls: 'renewal-badge-far' };
   }
 
   function cycleShort(cycle) {
@@ -293,7 +294,7 @@
     {#if showAllCategories}
       <div class="pill-filters pill-filters-all animate-fade-in">
         {#each categories.filter(c => !usedCategories.find(u => u.id === c.id)) as cat}
-          <button class="pill pill-empty" class:active={filterCategory === cat.id} on:click={() => setCategoryFilter(cat.id)}>
+          <button class="pill pill-empty" disabled>
             {cat.icon} {getCategoryName(cat.id, $t)}
           </button>
         {/each}
@@ -306,13 +307,13 @@
     <!-- Status Pill Filters -->
     <div class="pill-filters status-pills">
       <button class="pill pill-status" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
-        <span class="status-dot dot-active"></span>{$t('status.active')}
+        <span class="status-dot dot-active"></span>{$t('status.active')}{#if filterStatus === 'active'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill pill-status" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
-        <span class="status-dot dot-paused"></span>{$t('status.paused')}
+        <span class="status-dot dot-paused"></span>{$t('status.paused')}{#if filterStatus === 'paused'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill pill-status" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
-        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}
+        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}{#if filterStatus === 'cancelled'}<span class="pill-dismiss">×</span>{/if}
       </button>
     </div>
 
@@ -381,13 +382,13 @@
     </button>
     <div class="mobile-status-pills">
       <button class="pill-sm" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
-        <span class="status-dot dot-active"></span>{$t('status.active')}
+        <span class="status-dot dot-active"></span>{$t('status.active')}{#if filterStatus === 'active'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill-sm" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
-        <span class="status-dot dot-paused"></span>{$t('status.paused')}
+        <span class="status-dot dot-paused"></span>{$t('status.paused')}{#if filterStatus === 'paused'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill-sm" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
-        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}
+        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}{#if filterStatus === 'cancelled'}<span class="pill-dismiss">×</span>{/if}
       </button>
     </div>
   </div>
@@ -417,7 +418,7 @@
     <div class="sub-list" class:grid-view={viewMode === 'grid'}>
       {#each filteredSubs as sub, i (sub.id)}
         {@const d = daysUntil(sub.next_renewal)}
-        {@const badge = renewalBadge(d)}
+        {@const badge = renewalBadge(d, sub)}
         {@const catColor = getCategoryColor(sub.category)}
         {@const isExpanded = expandedId === sub.id}
         <div class="sub-wrapper animate-fade-in" style="animation-delay: {Math.min(i * 40, 400)}ms">
@@ -436,12 +437,17 @@
                   <span class="sub-name">{sub.name}</span>
                   <span class="status-badge {statusClass(sub.status)}">{statusLabel(sub.status)}</span>
                   {#if sub.original_price && sub.original_price > sub.price}
-                    <span class="discount-badge">Save {formatPrice(sub.original_price - sub.price, sub.currency)}</span>
+                    <span class="discount-badge">{$t('subs.save_amount', { amount: formatPrice(sub.original_price - sub.price, sub.currency) })}</span>
                   {/if}
                 </div>
-                <div class="sub-price-group">
-                  <span class="sub-price tabular-nums">{formatPrice(sub.price, sub.currency)}</span>
-                  <span class="sub-cycle">{cycleShort(sub.cycle)}</span>
+                <div class="sub-top-right">
+                  {#if badge}
+                    <span class="renewal-badge {badge.cls}">{badge.text}</span>
+                  {/if}
+                  <div class="sub-price-group">
+                    <span class="sub-price tabular-nums">{formatPrice(sub.price, sub.currency)}</span>
+                    <span class="sub-cycle">{cycleShort(sub.cycle)}</span>
+                  </div>
                 </div>
               </div>
               <div class="sub-row-bottom">
@@ -454,12 +460,7 @@
                     <span>{sub.payment_method}</span>
                   {/if}
                 </div>
-                <div class="sub-right-info">
-                  {#if badge}
-                    <span class="renewal-badge {badge.cls}">{badge.text}</span>
-                  {:else if sub.start_date}
-                    <span class="sub-date-label">{$t('subs.start_date')}: {sub.start_date}</span>
-                  {/if}
+                <div class="sub-actions">
                   <button class="btn-edit-card" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     {$t('subs.edit')}
@@ -492,7 +493,7 @@
                     <span class="detail-label">{$t('subs.original_price')}</span>
                     <span class="detail-value tabular-nums">
                       {formatPrice(sub.original_price, sub.currency)}
-                      <span class="discount-saved">Save {formatPrice(sub.original_price - sub.price, sub.currency)}/{getCycleName(sub.cycle, $t)}</span>
+                      <span class="discount-saved">{$t('subs.save_amount', { amount: formatPrice(sub.original_price - sub.price, sub.currency) })}/{getCycleName(sub.cycle, $t)}</span>
                     </span>
                   </div>
                 {/if}
@@ -526,6 +527,14 @@
                     <span class="detail-value">{sub.next_renewal} ({$t('subs.reminder_days', { days: sub.remind_days })})</span>
                   </div>
                 {/if}
+                <div class="detail-item">
+                  <span class="detail-label">{$t('subs.auto_renew')}</span>
+                  <span class="detail-value">{sub.auto_renew !== false ? '🔄 ' + $t('subs.auto_renew_on') : '⏸ ' + $t('subs.auto_renew_off')}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{$t('subs.status')}</span>
+                  <span class="detail-value">{$t(`status.${sub.status}`)}</span>
+                </div>
                 <div class="detail-item">
                   <span class="detail-label">{$t('subs.category')}</span>
                   <span class="detail-value">{getCategoryIcon(sub.category)} {getCategoryName(sub.category, $t)}</span>
@@ -581,7 +590,7 @@
           </button>
         {/each}
         {#each categories.filter(c => !usedCategories.find(u => u.id === c.id)) as cat}
-          <button class="sheet-item sheet-item-empty" class:active={filterCategory === cat.id} on:click={() => { setCategoryFilter(cat.id); showCategorySheet = false; }}>
+          <button class="sheet-item sheet-item-empty" disabled>
             <span class="sheet-item-icon">{cat.icon}</span>
             <span class="sheet-item-name">{getCategoryName(cat.id, $t)}</span>
           </button>
@@ -705,6 +714,12 @@
   .dot-active { background: var(--success); }
   .dot-paused { background: var(--warning); }
   .dot-cancelled { background: var(--text-tertiary); }
+  .pill-dismiss {
+    margin-left: 4px; font-size: 13px; opacity: 0.6;
+    transition: opacity 0.15s ease;
+  }
+  .pill:hover .pill-dismiss,
+  .pill-sm:hover .pill-dismiss { opacity: 1; }
 
   /* Toolbar: status pills + search/sort in one row */
   .toolbar {
@@ -880,6 +895,7 @@
   .sub-row-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .sub-name-group { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
   .sub-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub-top-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 
   .status-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--radius); flex-shrink: 0; }
   .status-active { background: rgba(68, 185, 49, 0.12); color: var(--success); }
@@ -908,7 +924,7 @@
 
   /* Bottom row */
   .sub-row-bottom {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    display: flex; align-items: center; gap: 12px;
   }
 
   .sub-meta {
@@ -918,8 +934,14 @@
   .sub-cat-label { font-weight: 500; }
   .meta-dot { color: var(--text-tertiary); font-size: 10px; }
 
-  .sub-right-info { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .sub-date-label { font-size: 12px; color: var(--text-tertiary); }
+  /* Action buttons - inline in bottom row, shown on hover */
+  .sub-actions {
+    display: flex; align-items: center; gap: 6px;
+    margin-left: auto; flex-shrink: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .sub-card:hover .sub-actions { opacity: 1; pointer-events: auto; }
 
   /* Renewal badge */
   .renewal-badge {
@@ -930,7 +952,8 @@
   .renewal-badge-overdue { background: rgba(237, 63, 63, 0.12); color: var(--error); }
   .renewal-badge-overdue-mild { background: rgba(245, 130, 32, 0.12); color: #E07020; }
   .renewal-badge-today { background: rgba(255, 176, 32, 0.15); color: #C08A00; }
-  .renewal-badge-soon { background: rgba(255, 176, 32, 0.10); color: var(--warning); }
+  .renewal-badge-urgent { background: rgba(245, 130, 32, 0.12); color: #E07020; font-weight: 600; }
+  .renewal-badge-soon { background: rgba(245, 158, 11, 0.14); color: #B47A00; }
   .renewal-badge-normal { background: var(--primary-tint); color: var(--primary); }
   .renewal-badge-far { background: var(--card); color: var(--text-secondary); }
 
@@ -1184,26 +1207,24 @@
     .sort-label { display: none; }
     .sort-trigger { gap: 4px; padding: 8px 10px; }
 
-    /* Card: name and price on separate rows */
+    /* Card: let content flow naturally, just reduce gaps */
     .sub-row-top {
-      flex-wrap: wrap;
-      gap: 4px;
+      gap: 8px;
     }
-    .sub-name-group {
-      flex: 1 0 100%;
-    }
-    .sub-price-group {
-      flex: 1 0 auto;
-    }
+    .sub-name { font-size: 14px; }
+    .sub-price { font-size: 16px; }
+    .renewal-badge { font-size: 11px; padding: 2px 8px; }
 
-    /* Bottom row wrap */
+    /* Bottom row */
     .sub-row-bottom {
       flex-wrap: wrap;
       gap: 6px;
     }
-    .sub-right-info {
-      flex: 1 0 auto;
-    }
+
+    /* Show action buttons always on touch devices */
+    .sub-actions { opacity: 1; pointer-events: auto; }
+    .btn-edit-card { opacity: 1; pointer-events: auto; }
+    .btn-delete-card { opacity: 1; pointer-events: auto; }
 
     /* Compact card padding */
     .sub-card {

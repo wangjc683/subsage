@@ -4,12 +4,13 @@
 
   export let upcoming = [];
 
-  function getRenewalTag(days) {
+  function getRenewalTag(days, sub) {
     if (days === null) return { text: '—', cls: '' };
-    if (days < 0) return { text: $t('subs.overdue', { days: Math.abs(days) }), cls: 'overdue' };
+    const isAuto = sub && sub.auto_renew !== false;
+    if (days < 0) return { text: isAuto ? $t('subs.overdue', { days: Math.abs(days) }) : $t('subs.expired_pending', { days: Math.abs(days) }), cls: 'overdue' };
     if (days === 0) return { text: $t('overview.today'), cls: 'today' };
-    if (days <= 3) return { text: $t('subs.renews_in', { days }), cls: 'soon' };
-    return { text: $t('subs.renews_in', { days }), cls: 'normal' };
+    if (days <= 3) return { text: isAuto ? $t('subs.auto_renews_in', { days }) : $t('subs.expires_in', { days }), cls: 'soon' };
+    return { text: isAuto ? $t('subs.auto_renews_in', { days }) : $t('subs.expires_in', { days }), cls: 'normal' };
   }
 </script>
 
@@ -19,7 +20,7 @@
     <div class="upcoming-list">
       {#each upcoming as sub, i}
         {@const d = daysUntil(sub.next_renewal)}
-        {@const tag = getRenewalTag(d)}
+        {@const tag = getRenewalTag(d, sub)}
         <div class="upcoming-item" style="animation-delay: {i * 40}ms">
           <div class="upcoming-icon">{getCategoryIcon(sub.category)}</div>
           <div class="upcoming-info">

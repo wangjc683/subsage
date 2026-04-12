@@ -17,6 +17,7 @@ type Subscription struct {
 	NextRenewal   string  `json:"next_renewal"`
 	URL           string  `json:"url"`
 	Notes         string  `json:"notes"`
+	AutoRenew     *bool   `json:"auto_renew,omitempty"`
 	RemindDays    int     `json:"remind_days"`
 	CreatedAt     string  `json:"created_at"`
 	UpdatedAt     string  `json:"updated_at"`

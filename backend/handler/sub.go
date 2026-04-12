@@ -16,6 +16,20 @@ func NewSubHandler(db *sql.DB) *SubHandler {
 	return &SubHandler{db: db}
 }
 
+// lazyAdvance checks auto_renew=true subscriptions and advances expired next_renewal dates.
+func (h *SubHandler) lazyAdvance(subs []model.Subscription) []model.Subscription {
+	for i, s := range subs {
+		if boolVal(s.AutoRenew, true) && s.NextRenewal != "" && s.Status == "active" {
+			newDate := advanceRenewal(s.NextRenewal, s.Cycle)
+			if newDate != s.NextRenewal {
+				subs[i].NextRenewal = newDate
+				go h.db.Exec("UPDATE subscriptions SET next_renewal=?, updated_at=datetime('now') WHERE id=?", newDate, s.ID)
+			}
+		}
+	}
+	return subs
+}
+
 func (h *SubHandler) List(c echo.Context) error {
 	category := c.QueryParam("category")
 	status := c.QueryParam("status")
@@ -74,6 +88,9 @@ func (h *SubHandler) List(c echo.Context) error {
 		subs = []model.Subscription{}
 	}
 
+	// Lazy advance auto_renew subscriptions
+	subs = h.lazyAdvance(subs)
+
 	return c.JSON(http.StatusOK, subs)
 }
 
@@ -89,6 +106,15 @@ func (h *SubHandler) Get(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
+	// Lazy advance if auto_renew
+	if boolVal(s.AutoRenew, true) && s.NextRenewal != "" && s.Status == "active" {
+		newDate := advanceRenewal(s.NextRenewal, s.Cycle)
+		if newDate != s.NextRenewal {
+			s.NextRenewal = newDate
+			go h.db.Exec("UPDATE subscriptions SET next_renewal=?, updated_at=datetime('now') WHERE id=?", newDate, s.ID)
+		}
+	}
+
 	return c.JSON(http.StatusOK, s)
 }
 
@@ -101,11 +127,17 @@ func (h *SubHandler) Create(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "name is required"})
 	}
 
+	// Default auto_renew to true if not specified
+	if s.AutoRenew == nil {
+		t := true
+		s.AutoRenew = &t
+	}
+
 	s.ID = generateID()
 	_, err := h.db.Exec(
-		`INSERT INTO subscriptions (id, name, category, status, price, original_price, discount_note, currency, cycle, payment_method, start_date, next_renewal, url, notes, remind_days)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.Name, s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, s.RemindDays,
+		`INSERT INTO subscriptions (id, name, category, status, price, original_price, discount_note, currency, cycle, payment_method, start_date, next_renewal, url, notes, auto_renew, remind_days)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.ID, s.Name, s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, boolVal(s.AutoRenew, true), s.RemindDays,
 	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -123,9 +155,9 @@ func (h *SubHandler) Update(c echo.Context) error {
 	}
 
 	_, err := h.db.Exec(
-		`UPDATE subscriptions SET name=?, category=?, status=?, price=?, original_price=?, discount_note=?, currency=?, cycle=?, payment_method=?, start_date=?, next_renewal=?, url=?, notes=?, remind_days=?, updated_at=datetime('now')
+		`UPDATE subscriptions SET name=?, category=?, status=?, price=?, original_price=?, discount_note=?, currency=?, cycle=?, payment_method=?, start_date=?, next_renewal=?, url=?, notes=?, auto_renew=?, remind_days=?, updated_at=datetime('now')
 		 WHERE id=?`,
-		s.Name, s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, s.RemindDays, id,
+		s.Name, s.Category, s.Status, s.Price, s.OriginalPrice, s.DiscountNote, s.Currency, s.Cycle, s.PaymentMethod, s.StartDate, s.NextRenewal, s.URL, s.Notes, boolVal(s.AutoRenew, true), s.RemindDays, id,
 	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -205,14 +237,17 @@ func (h *SubHandler) Patch(c echo.Context) error {
 	if patch.Notes != "" {
 		existing.Notes = patch.Notes
 	}
+	if patch.AutoRenew != nil {
+		existing.AutoRenew = patch.AutoRenew
+	}
 	if patch.RemindDays != 0 {
 		existing.RemindDays = patch.RemindDays
 	}
 
 	_, err = h.db.Exec(
-		`UPDATE subscriptions SET name=?, category=?, status=?, price=?, original_price=?, discount_note=?, currency=?, cycle=?, payment_method=?, start_date=?, next_renewal=?, url=?, notes=?, remind_days=?, updated_at=datetime('now')
+		`UPDATE subscriptions SET name=?, category=?, status=?, price=?, original_price=?, discount_note=?, currency=?, cycle=?, payment_method=?, start_date=?, next_renewal=?, url=?, notes=?, auto_renew=?, remind_days=?, updated_at=datetime('now')
 		 WHERE id=?`,
-		existing.Name, existing.Category, existing.Status, existing.Price, existing.OriginalPrice, existing.DiscountNote, existing.Currency, existing.Cycle, existing.PaymentMethod, existing.StartDate, existing.NextRenewal, existing.URL, existing.Notes, existing.RemindDays, id,
+		existing.Name, existing.Category, existing.Status, existing.Price, existing.OriginalPrice, existing.DiscountNote, existing.Currency, existing.Cycle, existing.PaymentMethod, existing.StartDate, existing.NextRenewal, existing.URL, existing.Notes, boolVal(existing.AutoRenew, true), existing.RemindDays, id,
 	)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

@@ -97,6 +97,7 @@ func migrate(db *sql.DB) error {
 	}{
 		{"original_price", "REAL"},
 		{"discount_note", "TEXT DEFAULT ''"},
+		{"auto_renew", "INTEGER NOT NULL DEFAULT 1"},
 	}
 	for _, ac := range addCols {
 		var val interface{}

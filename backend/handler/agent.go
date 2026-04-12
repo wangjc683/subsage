@@ -56,15 +56,19 @@ func (h *AgentHandler) Status(c echo.Context) error {
 	var totalCount int
 	h.db.QueryRow("SELECT COUNT(*) FROM agent_logs").Scan(&totalCount)
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	// Only include full token if explicitly requested
+	result := map[string]interface{}{
 		"has_activity":      totalCount > 0,
 		"total_calls":       totalCount,
 		"total_calls_today": todayCount,
 		"last_call_at":      lastCallAt.String,
 		"recent_calls":      recentCalls,
-		"api_token":         apiToken,
 		"api_token_masked":  masked,
-	})
+	}
+	if c.QueryParam("reveal") == "1" {
+		result["api_token"] = apiToken
+	}
+	return c.JSON(http.StatusOK, result)
 }
 
 func maskAPIToken(token string) string {
@@ -135,7 +139,7 @@ curl -s -X POST -H "X-API-Token: ` + apiToken + `" -H "Content-Type: application
 ` + "```" + `
 
 Required fields: ` + "`" + `name` + "`" + `, ` + "`" + `price` + "`" + `
-Optional fields: ` + "`" + `currency` + "`" + ` (default: CNY), ` + "`" + `cycle` + "`" + `, ` + "`" + `category` + "`" + `, ` + "`" + `status` + "`" + `, ` + "`" + `start_date` + "`" + `, ` + "`" + `next_renewal` + "`" + `, ` + "`" + `url` + "`" + `, ` + "`" + `notes` + "`" + `, ` + "`" + `payment_method` + "`" + `, ` + "`" + `original_price` + "`" + `, ` + "`" + `discount_note` + "`" + `
+Optional fields: ` + "`" + `currency` + "`" + ` (default: CNY), ` + "`" + `cycle` + "`" + `, ` + "`" + `category` + "`" + `, ` + "`" + `status` + "`" + `, ` + "`" + `start_date` + "`" + `, ` + "`" + `next_renewal` + "`" + `, ` + "`" + `auto_renew` + "`" + ` (default: true), ` + "`" + `url` + "`" + `, ` + "`" + `notes` + "`" + `, ` + "`" + `payment_method` + "`" + `, ` + "`" + `original_price` + "`" + `, ` + "`" + `discount_note` + "`" + `
 
 ## Update Subscription (Full)
 
@@ -212,6 +216,7 @@ curl -s -H "X-API-Token: ` + apiToken + `" ` + baseURL + `/api/agent/stats/by-ca
 Categories: ` + "`" + `ai` + "`" + `, ` + "`" + `video` + "`" + `, ` + "`" + `music` + "`" + `, ` + "`" + `software` + "`" + `, ` + "`" + `dev` + "`" + `, ` + "`" + `cloud` + "`" + `, ` + "`" + `security` + "`" + `, ` + "`" + `app` + "`" + `, ` + "`" + `gaming` + "`" + `, ` + "`" + `membership` + "`" + ` (custom categories also supported)
 Cycles: ` + "`" + `monthly` + "`" + `, ` + "`" + `yearly` + "`" + `, ` + "`" + `quarterly` + "`" + `, ` + "`" + `weekly` + "`" + `, ` + "`" + `lifetime` + "`" + `
 Status: ` + "`" + `active` + "`" + `, ` + "`" + `paused` + "`" + `, ` + "`" + `cancelled` + "`" + `
+auto_renew: ` + "`" + `true` + "`" + ` (default, auto-renewal) or ` + "`" + `false` + "`" + ` (manual renewal, requires user action at expiry)
 `
 
 	c.Response().Header().Set("Content-Type", "text/markdown; charset=utf-8")
