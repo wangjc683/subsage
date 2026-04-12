@@ -120,6 +120,7 @@ function createSubsStore() {
 
   return {
     subscribe,
+    update,
     loading: { subscribe: lSub },
     async fetch(params = {}) {
       setLoading(true);

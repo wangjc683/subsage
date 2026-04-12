@@ -147,6 +147,14 @@ export default {
   'subs.auto_renews_in': 'Auto-renews in {days}d',
   'subs.expires_in': 'Expires in {days}d',
 
+  // --- Quick Actions ---
+  'subs.quick_status_changed': 'Status changed to "{status}"',
+  'subs.renewal_decision': 'Renewal',
+  'subs.quick_renewed_btn': 'Renewed',
+  'subs.quick_wont_renew_btn': 'Won\'t Renew',
+  'subs.quick_renewed': 'Renewed, next renewal: {date}',
+  'subs.quick_wont_renew': 'Marked as won\'t renew',
+
   // --- Calendar ---
   'calendar.title': 'Calendar',
   'calendar.today': 'Today',

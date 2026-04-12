@@ -174,7 +174,11 @@
     for (const id of selectedIds) {
       try {
         const sub = ($subs || []).find(s => s.id === id);
-        if (sub) { await updateSub(id, { ...sub, price: sub.price, remind_days: sub.remind_days, status }); ok++; }
+        if (sub) {
+          const patch = { ...sub, price: sub.price, remind_days: sub.remind_days, status };
+          if (status === 'cancelled') patch.auto_renew = false;
+          await updateSub(id, patch); ok++;
+        }
       } catch (_) {}
     }
     selectedIds.clear(); batchMode = false;
@@ -231,6 +235,66 @@
     }
   }
 
+  // --- Quick actions (inline save without modal) ---
+  async function quickUpdate(sub, patch) {
+    const payload = {
+      name: sub.name, category: sub.category, status: sub.status,
+      price: sub.price, original_price: sub.original_price, discount_note: sub.discount_note,
+      currency: sub.currency, cycle: sub.cycle, payment_method: sub.payment_method,
+      start_date: sub.start_date, next_renewal: sub.next_renewal,
+      url: sub.url, notes: sub.notes, auto_renew: sub.auto_renew, remind_days: sub.remind_days,
+      ...patch,
+    };
+    // If cancelling, auto-disable auto_renew
+    if (patch.status === 'cancelled') payload.auto_renew = false;
+    try {
+      await updateSub(sub.id, payload);
+      // Update local store in-place (no re-sort, card stays in position)
+      subs.update(list => list.map(s => s.id === sub.id ? { ...s, ...payload } : s));
+      return true;
+    } catch (e) {
+      toasts.error(e.message || $t('common.save_failed'));
+      return false;
+    }
+  }
+
+  async function quickSetStatus(sub, status) {
+    if (sub.status === status) return;
+    const ok = await quickUpdate(sub, { status });
+    if (ok) toasts.success($t('subs.quick_status_changed', { status: statusLabel(status) }));
+  }
+
+  async function quickToggleAutoRenew(sub) {
+    const newVal = sub.auto_renew === false ? true : false;
+    const ok = await quickUpdate(sub, { auto_renew: newVal });
+    if (ok) toasts.success(newVal ? $t('subs.auto_renew_on') : $t('subs.auto_renew_off'));
+  }
+
+  function advanceDateByCycle(dateStr, cycle) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    switch (cycle) {
+      case 'weekly': d.setDate(d.getDate() + 7); break;
+      case 'monthly': d.setMonth(d.getMonth() + 1); break;
+      case 'quarterly': d.setMonth(d.getMonth() + 3); break;
+      case 'yearly': d.setFullYear(d.getFullYear() + 1); break;
+      default: return dateStr;
+    }
+    return d.toISOString().slice(0, 10);
+  }
+
+  async function quickRenewed(sub) {
+    const newDate = advanceDateByCycle(sub.next_renewal, sub.cycle);
+    if (!newDate || newDate === sub.next_renewal) return;
+    const ok = await quickUpdate(sub, { next_renewal: newDate });
+    if (ok) toasts.success($t('subs.quick_renewed', { date: newDate }));
+  }
+
+  async function quickWontRenew(sub) {
+    const ok = await quickUpdate(sub, { status: 'cancelled' });
+    if (ok) toasts.success($t('subs.quick_wont_renew'));
+  }
+
   function statusLabel(s) { return { active: $t('status.active'), paused: $t('status.paused'), cancelled: $t('status.cancelled') }[s] || s; }
   function statusClass(s) { return { active: 'status-active', paused: 'status-paused', cancelled: 'status-cancelled' }[s] || ''; }
 
@@ -273,6 +337,7 @@
       <div class="batch-actions">
         <button class="btn-batch-action" on:click={() => batchSetStatus('active')} disabled={selectedCount === 0}>▶ {$t('status.active')}</button>
         <button class="btn-batch-action" on:click={() => batchSetStatus('paused')} disabled={selectedCount === 0}>⏸ {$t('status.paused')}</button>
+        <button class="btn-batch-action warn" on:click={() => batchSetStatus('cancelled')} disabled={selectedCount === 0}>✖ {$t('status.cancelled')}</button>
         <button class="btn-batch-action danger" on:click={batchDelete} disabled={selectedCount === 0}>🗑 {$t('common.delete')}</button>
       </div>
     </div>
@@ -450,34 +515,61 @@
                   </div>
                 </div>
               </div>
-              <div class="sub-row-bottom">
-                <div class="sub-meta">
-                  <span class="sub-cat-label">{getCategoryIcon(sub.category)} {getCategoryName(sub.category, $t)}</span>
-                  <span class="meta-dot">·</span>
-                  <span>{getCycleName(sub.cycle, $t)}</span>
-                  {#if sub.payment_method}
-                    <span class="meta-dot">·</span>
-                    <span>{sub.payment_method}</span>
-                  {/if}
-                </div>
-                <div class="sub-actions">
-                  <button class="btn-edit-card" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    {$t('subs.edit')}
-                  </button>
-                  <button class="btn-delete-card" on:click|stopPropagation={() => confirmDelete(sub)} title="{$t('common.delete')}">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                  </button>
-                </div>
-              </div>
             </div>
-            <div class="sub-chevron">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="transform: rotate({isExpanded ? '180' : '0'}deg); transition: transform 0.2s"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="sub-end">
+              <span class="sub-chevron-icon">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="transform: rotate({isExpanded ? '180' : '0'}deg); transition: transform 0.2s"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+              <button class="sub-edit-icon" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
             </div>
           </div>
 
           {#if isExpanded}
             <div class="sub-detail animate-fade-in">
+              <!-- Quick Actions (top for fast access) -->
+              <div class="quick-actions">
+                <div class="quick-action-row">
+                  <div class="quick-group">
+                    <span class="quick-label">{$t('subs.status')}</span>
+                    <div class="quick-status-seg">
+                      {#each ['active', 'paused', 'cancelled'] as st}
+                        <button
+                          class="seg-btn {sub.status === st ? 'seg-active seg-' + st : ''}"
+                          on:click|stopPropagation={() => quickSetStatus(sub, st)}
+                        >{statusLabel(st)}</button>
+                      {/each}
+                    </div>
+                  </div>
+                  <span class="quick-separator"></span>
+                  <div class="quick-group">
+                    <span class="quick-label">{$t('subs.auto_renew')}</span>
+                    <button
+                      class="quick-toggle {sub.auto_renew !== false ? 'toggle-on' : 'toggle-off'}"
+                      on:click|stopPropagation={() => quickToggleAutoRenew(sub)}
+                    >
+                      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                      <span class="toggle-text">{sub.auto_renew !== false ? $t('subs.auto_renew_on') : $t('subs.auto_renew_off')}</span>
+                    </button>
+                  </div>
+                </div>
+                {#if sub.status === 'active' && sub.auto_renew === false && sub.next_renewal}
+                  <div class="quick-action-row">
+                    <span class="quick-label">{$t('subs.renewal_decision')}</span>
+                    <div class="quick-status-seg">
+                      <button class="seg-btn seg-renewed" on:click|stopPropagation={() => quickRenewed(sub)}>
+                        {$t('subs.quick_renewed_btn')}
+                      </button>
+                      <button class="seg-btn seg-wont" on:click|stopPropagation={() => quickWontRenew(sub)}>
+                        {$t('subs.quick_wont_renew_btn')}
+                      </button>
+                    </div>
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Detail info -->
               <div class="detail-grid">
                 {#if sub.url}
                   <div class="detail-item">
@@ -503,6 +595,10 @@
                     <span class="detail-value">{sub.discount_note}</span>
                   </div>
                 {/if}
+                <div class="detail-item">
+                  <span class="detail-label">{$t('subs.cycle')}</span>
+                  <span class="detail-value">{getCycleName(sub.cycle, $t)}</span>
+                </div>
                 {#if sub.payment_method}
                   <div class="detail-item">
                     <span class="detail-label">{$t('subs.payment_method')}</span>
@@ -528,14 +624,6 @@
                   </div>
                 {/if}
                 <div class="detail-item">
-                  <span class="detail-label">{$t('subs.auto_renew')}</span>
-                  <span class="detail-value">{sub.auto_renew !== false ? '🔄 ' + $t('subs.auto_renew_on') : '⏸ ' + $t('subs.auto_renew_off')}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">{$t('subs.status')}</span>
-                  <span class="detail-value">{$t(`status.${sub.status}`)}</span>
-                </div>
-                <div class="detail-item">
                   <span class="detail-label">{$t('subs.category')}</span>
                   <span class="detail-value">{getCategoryIcon(sub.category)} {getCategoryName(sub.category, $t)}</span>
                 </div>
@@ -543,6 +631,16 @@
                   <span class="detail-label">{$t('subs.created_at')}</span>
                   <span class="detail-value">{sub.created_at}</span>
                 </div>
+              </div>
+              <div class="detail-footer">
+                <button class="btn-detail-edit" on:click|stopPropagation={() => openEdit(sub)}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  {$t('subs.edit')}
+                </button>
+                <button class="btn-detail-delete" on:click|stopPropagation={() => confirmDelete(sub)}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  {$t('common.delete')}
+                </button>
               </div>
             </div>
           {/if}
@@ -681,7 +779,10 @@
   }
   .btn-batch-action:hover:not(:disabled) { background: var(--hover); }
   .btn-batch-action:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-batch-action.danger:hover:not(:disabled) { border-color: var(--error); color: var(--error); }
+  .btn-batch-action.warn { color: #b45309; border-color: rgba(180, 83, 9, 0.4); }
+  .btn-batch-action.warn:hover:not(:disabled) { border-color: #b45309; background: rgba(180, 83, 9, 0.08); }
+  .btn-batch-action.danger { color: var(--error); border-color: rgba(237, 63, 63, 0.4); }
+  .btn-batch-action.danger:hover:not(:disabled) { border-color: var(--error); background: rgba(237, 63, 63, 0.08); }
 
   .btn-check {
     display: flex; align-items: center; gap: 6px; font-size: 13px;
@@ -864,7 +965,7 @@
     display: flex; align-items: center; gap: 16px; padding: 18px 20px;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     transition: all var(--transition); cursor: pointer;
-    text-align: left; width: 100%; color: inherit;
+    text-align: left; width: 100%; color: inherit; position: relative;
   }
   .sub-card:hover {
     box-shadow: var(--shadow-md);
@@ -899,7 +1000,7 @@
 
   .status-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--radius); flex-shrink: 0; }
   .status-active { background: rgba(68, 185, 49, 0.12); color: var(--success); }
-  .status-paused { background: rgba(255, 176, 32, 0.12); color: var(--warning); }
+  .status-paused { background: rgba(180, 83, 9, 0.12); color: #b45309; }
   .status-cancelled { background: rgba(146, 146, 146, 0.12); color: var(--text-tertiary); }
 
   .discount-badge {
@@ -922,26 +1023,28 @@
     font-size: 13px; color: var(--text-tertiary); font-weight: 400;
   }
 
-  /* Bottom row */
-  .sub-row-bottom {
-    display: flex; align-items: center; gap: 12px;
+  /* Detail footer: edit/delete buttons */
+  .detail-footer {
+    display: flex; align-items: center; gap: 8px; justify-content: flex-end;
+    padding-top: 12px; border-top: 1px solid var(--border); margin-top: 8px;
   }
-
-  .sub-meta {
-    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
-    font-size: 12px; color: var(--text-secondary);
+  .btn-detail-edit {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: var(--radius);
+    font-size: 12px; font-weight: 500; border: 1px solid var(--border);
+    cursor: pointer; transition: all 0.15s ease; background: transparent;
+    color: var(--text-secondary);
   }
-  .sub-cat-label { font-weight: 500; }
-  .meta-dot { color: var(--text-tertiary); font-size: 10px; }
-
-  /* Action buttons - inline in bottom row, shown on hover */
-  .sub-actions {
-    display: flex; align-items: center; gap: 6px;
-    margin-left: auto; flex-shrink: 0;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.15s ease;
+  .btn-detail-edit:hover { background: var(--hover); color: var(--text-primary); border-color: var(--primary); }
+  .btn-detail-delete {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: var(--radius);
+    font-size: 12px; font-weight: 500;
+    border: 1px solid rgba(237, 63, 63, 0.4);
+    cursor: pointer; transition: all 0.15s ease; background: transparent;
+    color: var(--error);
   }
-  .sub-card:hover .sub-actions { opacity: 1; pointer-events: auto; }
+  .btn-detail-delete:hover { background: rgba(237, 63, 63, 0.08); border-color: var(--error); }
 
   /* Renewal badge */
   .renewal-badge {
@@ -957,39 +1060,86 @@
   .renewal-badge-normal { background: var(--primary-tint); color: var(--primary); }
   .renewal-badge-far { background: var(--card); color: var(--text-secondary); }
 
-  /* Edit button - hidden by default, shown on card hover */
-  .btn-edit-card {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 12px; border-radius: var(--radius-sm);
-    font-size: 12px; font-weight: 500;
-    color: var(--text-secondary); background: var(--card);
-    border: 1px solid var(--border);
-    transition: all var(--transition); white-space: nowrap;
-    flex-shrink: 0;
-    opacity: 0; pointer-events: none;
-  }
-  .sub-card:hover .btn-edit-card { opacity: 1; pointer-events: auto; }
-  .btn-edit-card:hover {
-    color: var(--primary); border-color: var(--primary);
-    background: var(--primary-faint);
-  }
-  .btn-edit-card:active { transform: scale(0.95); }
 
-  /* Delete icon button - hidden by default, shown on card hover */
-  .btn-delete-card {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 30px; height: 30px; border-radius: var(--radius-sm);
+  /* End slot: chevron ↔ edit swap */
+  .sub-end {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; flex-shrink: 0; position: relative;
+  }
+  .sub-chevron-icon {
+    color: var(--text-tertiary); transition: all 0.15s ease;
+  }
+  .sub-edit-icon {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
     color: var(--text-tertiary); background: transparent;
-    border: 1px solid transparent;
-    transition: all var(--transition); flex-shrink: 0;
+    border: none; border-radius: var(--radius-sm);
+    cursor: pointer; transition: all 0.15s ease;
     opacity: 0; pointer-events: none;
   }
-  .sub-card:hover .btn-delete-card { opacity: 1; pointer-events: auto; }
-  .btn-delete-card:hover {
-    color: var(--error); border-color: var(--error);
-    background: rgba(237, 63, 63, 0.08);
+  .sub-card:hover .sub-chevron-icon { opacity: 0; }
+  .sub-card:hover .sub-edit-icon { opacity: 1; pointer-events: auto; }
+  .sub-edit-icon:hover { color: var(--primary); }
+  .quick-actions {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+    display: flex; flex-direction: column; gap: 10px;
   }
-  .btn-delete-card:active { transform: scale(0.9); }
+  .quick-action-row {
+    display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .quick-separator {
+    width: 1px; height: 20px; background: var(--border); flex-shrink: 0;
+  }
+  .quick-group {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .quick-label {
+    font-size: 13px; color: var(--text-secondary); font-weight: 500; flex-shrink: 0;
+  }
+
+  /* Status segmented control */
+  .quick-status-seg {
+    display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .seg-btn {
+    padding: 5px 14px; font-size: 12px; font-weight: 500;
+    border: none; background: transparent; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s ease;
+    border-right: 1px solid var(--border);
+  }
+  .seg-btn:last-child { border-right: none; }
+  .seg-btn:hover { background: var(--hover); }
+  .seg-btn.seg-active { color: #fff; font-weight: 600; }
+  .seg-btn.seg-active { background: var(--primary); }
+  .seg-btn.seg-paused { background: #f59e0b; }
+  .seg-btn.seg-cancelled { background: var(--text-tertiary); }
+
+  /* Toggle switch */
+  .quick-toggle {
+    display: flex; align-items: center; gap: 8px;
+    background: transparent; border: none; cursor: pointer; padding: 0;
+  }
+  .toggle-track {
+    width: 36px; height: 20px; border-radius: 10px;
+    position: relative; transition: background 0.2s;
+  }
+  .toggle-thumb {
+    position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-on .toggle-track { background: var(--primary); }
+  .toggle-on .toggle-thumb { transform: translateX(16px); }
+  .toggle-off .toggle-track { background: var(--border); }
+  .toggle-text { font-size: 13px; color: var(--text-secondary); }
+
+  /* Decision buttons — reuse seg style */
+  .quick-decision-row { margin-top: 2px; }
+  .seg-btn.seg-renewed:hover { background: var(--primary-faint); color: var(--primary); }
+  .seg-btn.seg-wont:hover { background: rgba(237, 63, 63, 0.08); color: var(--error); }
 
   /* Confirm dialog */
   .confirm-overlay {
@@ -1033,12 +1183,6 @@
   .confirm-delete:hover { opacity: 0.9; }
   .confirm-delete:active { transform: scale(0.97); }
 
-  /* Chevron */
-  .sub-chevron {
-    color: var(--text-tertiary); flex-shrink: 0;
-    transition: color var(--transition);
-  }
-  .sub-card:hover .sub-chevron { color: var(--text-secondary); }
 
   /* Detail expansion */
   .sub-detail {
@@ -1207,24 +1351,41 @@
     .sort-label { display: none; }
     .sort-trigger { gap: 4px; padding: 8px 10px; }
 
-    /* Card: let content flow naturally, just reduce gaps */
-    .sub-row-top {
-      gap: 8px;
-    }
+    .sub-row-top { flex-wrap: wrap; gap: 6px; }
+    .sub-name-group { flex: 1 1 100%; min-width: 0; }
     .sub-name { font-size: 14px; }
+    .sub-top-right { flex: 1 1 100%; justify-content: flex-end; gap: 8px; }
     .sub-price { font-size: 16px; }
-    .renewal-badge { font-size: 11px; padding: 2px 8px; }
+    .renewal-badge { font-size: 11px; padding: 2px 8px; white-space: nowrap; }
+    .status-badge { white-space: nowrap; }
 
-    /* Bottom row */
-    .sub-row-bottom {
-      flex-wrap: wrap;
-      gap: 6px;
+    /* Batch bar: wrap buttons to avoid overflow */
+    .batch-bar { flex-wrap: wrap; gap: 8px; }
+    .batch-actions { flex-wrap: wrap; gap: 6px; }
+    .btn-batch-action { padding: 5px 10px; font-size: 11px; }
+
+    /* Quick actions: stack groups on mobile */
+    .quick-action-row { flex-wrap: wrap; gap: 10px; }
+    .quick-separator { display: none; }
+    .quick-group { flex: 1 1 100%; justify-content: space-between; }
+
+    /* Larger touch targets on mobile (44px min) */
+    .seg-btn { padding: 12px 16px; font-size: 13px; white-space: nowrap; }
+    .quick-status-seg { border-radius: var(--radius); gap: 2px; }
+    .seg-btn { border-right: none; }
+
+    /* Renewal decision: colored fills only */
+    .seg-btn.seg-renewed {
+      background: var(--primary-faint); color: var(--primary);
+    }
+    .seg-btn.seg-wont {
+      background: rgba(237, 63, 63, 0.06); color: var(--error);
     }
 
-    /* Show action buttons always on touch devices */
-    .sub-actions { opacity: 1; pointer-events: auto; }
-    .btn-edit-card { opacity: 1; pointer-events: auto; }
-    .btn-delete-card { opacity: 1; pointer-events: auto; }
+    /* Larger toggle for touch */
+    .toggle-track { width: 48px; height: 28px; border-radius: 14px; }
+    .toggle-thumb { width: 22px; height: 22px; top: 3px; left: 3px; }
+    .toggle-on .toggle-thumb { transform: translateX(20px); }
 
     /* Compact card padding */
     .sub-card {
@@ -1236,6 +1397,10 @@
       height: 38px;
     }
     .sub-icon-emoji { font-size: 18px; }
+
+    /* Edit icon always visible on touch */
+    .sub-edit-icon { opacity: 1; pointer-events: auto; }
+    .sub-chevron-icon { display: none; }
 
     /* Detail expansion less indented on mobile */
     .sub-detail {

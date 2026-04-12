@@ -147,6 +147,14 @@ export default {
   'subs.auto_renews_in': '{days} 天后自动续费',
   'subs.expires_in': '{days} 天后到期',
 
+  // --- Quick Actions ---
+  'subs.quick_status_changed': '状态已更改为「{status}」',
+  'subs.renewal_decision': '续费决策',
+  'subs.quick_renewed_btn': '已续费',
+  'subs.quick_wont_renew_btn': '不再续费',
+  'subs.quick_renewed': '已续费，下次续费日期：{date}',
+  'subs.quick_wont_renew': '已标记为不再续费',
+
   // --- Calendar ---
   'calendar.title': '日历',
   'calendar.today': '今天',
