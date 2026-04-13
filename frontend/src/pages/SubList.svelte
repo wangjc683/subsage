@@ -21,14 +21,22 @@
   let sortDropdownEl;
   let deleteConfirmSub = null;
   let showCategorySheet = false;
-  let viewMode = 'list';
+  let viewMode = 'compact';
 
   // Load view mode preference from localStorage
-  try { viewMode = localStorage.getItem('sage_view_mode') || 'list'; } catch (_) {}
+  try { viewMode = localStorage.getItem('sage_view_mode') || 'compact'; } catch (_) {}
   function setViewMode(mode) {
     viewMode = mode;
     try { localStorage.setItem('sage_view_mode', mode); } catch (_) {}
   }
+
+  // Detect mobile to force compact template
+  let isMobile = false;
+  const mql = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)') : null;
+  if (mql) isMobile = mql.matches;
+  function handleMqlChange(e) { isMobile = e.matches; }
+  if (mql) mql.addEventListener('change', handleMqlChange);
+  $: effectiveViewMode = isMobile ? 'compact' : viewMode;
 
   const sortOptions = [
     { value: '', key: 'subs.sort_default' },
@@ -71,6 +79,32 @@
   });
 
   $: activeCount = ($subs || []).filter(s => s.status === 'active').length;
+  $: totalSubs = ($subs || []).length;
+  $: statusCounts = {
+    active: ($subs || []).filter(s => s.status === 'active').length,
+    paused: ($subs || []).filter(s => s.status === 'paused').length,
+    cancelled: ($subs || []).filter(s => s.status === 'cancelled').length,
+  };
+  $: monthlyTotal = (() => {
+    const activeSubs = ($subs || []).filter(s => s.status === 'active');
+    return activeSubs.reduce((sum, s) => {
+      let monthly = s.price || 0;
+      switch (s.cycle) {
+        case 'weekly': monthly = s.price * (365 / 12 / 7); break;
+        case 'monthly': break;
+        case 'quarterly': monthly = s.price / 3; break;
+        case 'yearly': monthly = s.price / 12; break;
+        case 'lifetime': monthly = 0; break;
+      }
+      return sum + monthly;
+    }, 0);
+  })();
+  $: primaryCurrency = (() => {
+    const counts = {};
+    ($subs || []).filter(s => s.status === 'active').forEach(s => { counts[s.currency] = (counts[s.currency] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return sorted[0]?.[0] || $settings?.base_currency || 'USD';
+  })();
   $: allSelected = filteredSubs.length > 0 && filteredSubs.every(s => selectedIds.has(s.id));
   $: selectedCount = selectedIds.size;
 
@@ -141,6 +175,7 @@
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeydown);
     window.removeEventListener('click', handleClickOutside, true);
+    if (mql) mql.removeEventListener('change', handleMqlChange);
   });
 
   function toggleExpand(id) {
@@ -308,7 +343,7 @@
   <div class="page-header">
     <div class="page-header-left">
       <h1>{$t('subs.title')}</h1>
-      <span class="page-subtitle">{activeCount} {$t('overview.active_subs')}</span>
+      <span class="page-subtitle">{totalSubs > 0 ? $t('subs.page_summary', { count: totalSubs, amount: formatPrice(monthlyTotal, primaryCurrency) }) : $t('subs.page_summary_empty')}</span>
     </div>
     <div class="header-actions">
       {#if !batchMode}
@@ -372,13 +407,13 @@
     <!-- Status Pill Filters -->
     <div class="pill-filters status-pills">
       <button class="pill pill-status" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
-        <span class="status-dot dot-active"></span>{$t('status.active')}{#if filterStatus === 'active'}<span class="pill-dismiss">×</span>{/if}
+        <span class="status-dot dot-active"></span>{$t('status.active')}({statusCounts.active}){#if filterStatus === 'active'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill pill-status" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
-        <span class="status-dot dot-paused"></span>{$t('status.paused')}{#if filterStatus === 'paused'}<span class="pill-dismiss">×</span>{/if}
+        <span class="status-dot dot-paused"></span>{$t('status.paused')}({statusCounts.paused}){#if filterStatus === 'paused'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill pill-status" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
-        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}{#if filterStatus === 'cancelled'}<span class="pill-dismiss">×</span>{/if}
+        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}({statusCounts.cancelled}){#if filterStatus === 'cancelled'}<span class="pill-dismiss">×</span>{/if}
       </button>
     </div>
 
@@ -423,11 +458,11 @@
         {/if}
       </div>
       <div class="view-toggle">
-        <button class="view-btn" class:active={viewMode === 'list'} on:click={() => setViewMode('list')} title="List view">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <button class="view-btn" class:active={viewMode === 'grid'} on:click={() => setViewMode('grid')} title="Grid view">
+        <button class="view-btn" class:active={viewMode === 'compact'} on:click={() => setViewMode('compact')} title="Compact view">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+        <button class="view-btn" class:active={viewMode === 'card'} on:click={() => setViewMode('card')} title="Card view">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/></svg>
         </button>
       </div>
     </div>
@@ -447,13 +482,13 @@
     </button>
     <div class="mobile-status-pills">
       <button class="pill-sm" class:active={filterStatus === 'active'} on:click={() => setStatusFilter('active')}>
-        <span class="status-dot dot-active"></span>{$t('status.active')}{#if filterStatus === 'active'}<span class="pill-dismiss">×</span>{/if}
+        <span class="status-dot dot-active"></span>{$t('status.active')}({statusCounts.active}){#if filterStatus === 'active'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill-sm" class:active={filterStatus === 'paused'} on:click={() => setStatusFilter('paused')}>
-        <span class="status-dot dot-paused"></span>{$t('status.paused')}{#if filterStatus === 'paused'}<span class="pill-dismiss">×</span>{/if}
+        <span class="status-dot dot-paused"></span>{$t('status.paused')}({statusCounts.paused}){#if filterStatus === 'paused'}<span class="pill-dismiss">×</span>{/if}
       </button>
       <button class="pill-sm" class:active={filterStatus === 'cancelled'} on:click={() => setStatusFilter('cancelled')}>
-        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}{#if filterStatus === 'cancelled'}<span class="pill-dismiss">×</span>{/if}
+        <span class="status-dot dot-cancelled"></span>{$t('status.cancelled')}({statusCounts.cancelled}){#if filterStatus === 'cancelled'}<span class="pill-dismiss">×</span>{/if}
       </button>
     </div>
   </div>
@@ -480,51 +515,119 @@
       {/if}
     </div>
   {:else}
-    <div class="sub-list" class:grid-view={viewMode === 'grid'}>
+    <div class="sub-list" class:compact-view={effectiveViewMode === 'compact'} class:card-view={effectiveViewMode === 'card'}>
       {#each filteredSubs as sub, i (sub.id)}
         {@const d = daysUntil(sub.next_renewal)}
         {@const badge = renewalBadge(d, sub)}
         {@const catColor = getCategoryColor(sub.category)}
         {@const isExpanded = expandedId === sub.id}
         <div class="sub-wrapper animate-fade-in" style="animation-delay: {Math.min(i * 40, 400)}ms">
-          <div class="sub-card" class:expanded={isExpanded} on:click={() => toggleExpand(sub.id)} on:keydown={(e) => e.key === 'Enter' && toggleExpand(sub.id)} role="button" tabindex="0">
-            {#if batchMode}
-              <button type="button" class="btn-check" on:click|stopPropagation={() => toggleSelect(sub.id)}>
-                <span class="checkbox" class:checked={selectedIds.has(sub.id)}>✓</span>
-              </button>
-            {/if}
-            <div class="sub-icon-box" style="background: {catColor.bg}; color: {catColor.text}">
-              <span class="sub-icon-emoji">{getCategoryIcon(sub.category)}</span>
-            </div>
-            <div class="sub-body">
-              <div class="sub-row-top">
-                <div class="sub-name-group">
-                  <span class="sub-name">{sub.name}</span>
-                  <span class="status-badge {statusClass(sub.status)}">{statusLabel(sub.status)}</span>
+
+          {#if effectiveViewMode === 'card'}
+            <!-- Card View: information dashboard -->
+            <div class="sub-card-rich" role="article">
+              {#if batchMode}
+                <button type="button" class="btn-check card-check" on:click|stopPropagation={() => toggleSelect(sub.id)}>
+                  <span class="checkbox" class:checked={selectedIds.has(sub.id)}>✓</span>
+                </button>
+              {/if}
+              <div class="card-header">
+                <div class="card-icon-box" style="background: {catColor.bg}; color: {catColor.text}">
+                  <span class="card-icon-emoji">{getCategoryIcon(sub.category)}</span>
+                </div>
+                <div class="card-title-group">
+                  <span class="card-name">{sub.name}</span>
+                  <span class="card-category">{getCategoryName(sub.category, $t)}</span>
+                </div>
+              </div>
+              <div class="card-info-grid">
+                <div class="card-info-left">
+                  <div class="card-price-row">
+                    <span class="card-price tabular-nums">{formatPrice(sub.price, sub.currency)}</span>
+                    <span class="card-cycle">{cycleShort(sub.cycle)}</span>
+                  </div>
+                  {#if badge}
+                    <span class="renewal-badge {badge.cls}" style="font-size: 11px;">{badge.text}</span>
+                  {/if}
                   {#if sub.original_price && sub.original_price > sub.price}
-                    <span class="discount-badge">{$t('subs.save_amount', { amount: formatPrice(sub.original_price - sub.price, sub.currency) })}</span>
+                    <span class="discount-badge" style="font-size: 10px;">{$t('subs.save_amount', { amount: formatPrice(sub.original_price - sub.price, sub.currency) })}</span>
                   {/if}
                 </div>
-                <div class="sub-top-right">
-                  {#if badge}
-                    <span class="renewal-badge {badge.cls}">{badge.text}</span>
+                <div class="card-info-right">
+                  {#if sub.start_date}
+                    <span class="card-meta-item"><span class="card-meta-label">{$t('subs.start_date')}</span> {sub.start_date.replace(/-/g, '/')}</span>
                   {/if}
-                  <div class="sub-price-group">
-                    <span class="sub-price tabular-nums">{formatPrice(sub.price, sub.currency)}</span>
-                    <span class="sub-cycle">{cycleShort(sub.cycle)}</span>
-                  </div>
+                  {#if sub.next_renewal}
+                    <span class="card-meta-item"><span class="card-meta-label">{$t('subs.next_renewal')}</span> {sub.next_renewal.replace(/-/g, '/')}</span>
+                  {/if}
+                  {#if sub.payment_method}
+                    <span class="card-meta-item"><span class="card-meta-label">{$t('subs.payment_method')}</span> {sub.payment_method}</span>
+                  {/if}
+                </div>
+              </div>
+              <div class="card-actions">
+                <div class="card-status-seg">
+                  {#each ['active', 'paused', 'cancelled'] as st}
+                    <button
+                      class="seg-btn-sm {sub.status === st ? 'seg-active seg-' + st : ''}"
+                      on:click|stopPropagation={() => quickSetStatus(sub, st)}
+                    >{statusLabel(st)}</button>
+                  {/each}
+                </div>
+                <div class="card-action-btns">
+                  <button class="card-action-btn" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button class="card-action-btn card-action-danger" on:click|stopPropagation={() => { deleteConfirmSub = sub; }} title="{$t('common.delete')}">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
                 </div>
               </div>
             </div>
-            <div class="sub-end">
-              <span class="sub-chevron-icon">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="transform: rotate({isExpanded ? '180' : '0'}deg); transition: transform 0.2s"><polyline points="6 9 12 15 18 9"/></svg>
-              </span>
-              <button class="sub-edit-icon" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
+
+          {:else}
+            <!-- Compact View: horizontal, dense -->
+            <div class="sub-card" class:expanded={isExpanded} on:click={() => toggleExpand(sub.id)} on:keydown={(e) => e.key === 'Enter' && toggleExpand(sub.id)} role="button" tabindex="0">
+              {#if batchMode}
+                <button type="button" class="btn-check" on:click|stopPropagation={() => toggleSelect(sub.id)}>
+                  <span class="checkbox" class:checked={selectedIds.has(sub.id)}>✓</span>
+                </button>
+              {/if}
+              <div class="sub-icon-box" style="background: {catColor.bg}; color: {catColor.text}">
+                <span class="sub-icon-emoji">{getCategoryIcon(sub.category)}</span>
+              </div>
+              <div class="sub-body">
+                <div class="sub-row-top">
+                  <div class="sub-name-group">
+                    <span class="sub-name">{sub.name}</span>
+                    <div class="sub-badges">
+                      <span class="status-badge {statusClass(sub.status)}">{statusLabel(sub.status)}</span>
+                      {#if sub.original_price && sub.original_price > sub.price}
+                        <span class="discount-badge">{$t('subs.save_amount', { amount: formatPrice(sub.original_price - sub.price, sub.currency) })}</span>
+                      {/if}
+                    </div>
+                  </div>
+                  <div class="sub-top-right">
+                    {#if badge}
+                      <span class="renewal-badge {badge.cls}">{badge.text}</span>
+                    {/if}
+                    <div class="sub-price-group">
+                      <span class="sub-price tabular-nums">{formatPrice(sub.price, sub.currency)}</span>
+                      <span class="sub-cycle">{cycleShort(sub.cycle)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="sub-end">
+                <span class="sub-chevron-icon">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="transform: rotate({isExpanded ? '180' : '0'}deg); transition: transform 0.2s"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+                <button class="sub-edit-icon" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+              </div>
             </div>
-          </div>
+          {/if}
 
           {#if isExpanded}
             <div class="sub-detail animate-fade-in">
@@ -935,30 +1038,135 @@
   .empty-desc { font-size: 13px; color: var(--text-secondary); }
 
   .sub-list { display: flex; flex-direction: column; gap: 8px; }
-  .sub-list.grid-view {
+  .sub-list.compact-view {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
-  /* Grid view card adjustments */
-  .sub-list.grid-view .sub-card {
+  /* Compact view card adjustments */
+  .sub-list.compact-view .sub-card {
     gap: 12px; padding: 14px 14px;
   }
-  .sub-list.grid-view .sub-name {
+  .sub-list.compact-view .sub-name {
     font-size: 14px;
   }
-  .sub-list.grid-view .sub-price {
+  .sub-list.compact-view .sub-price {
     font-size: 16px;
   }
-  .sub-list.grid-view .sub-meta {
+  .sub-list.compact-view .sub-meta {
     font-size: 11px;
   }
-  .sub-list.grid-view .sub-icon-box {
+  .sub-list.compact-view .sub-icon-box {
     width: 38px; height: 38px;
   }
-  .sub-list.grid-view .sub-icon-emoji {
+  .sub-list.compact-view .sub-icon-emoji {
     font-size: 18px;
   }
+
+  /* Card View: 3-column dashboard cards */
+  .sub-list.card-view {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .sub-card-rich {
+    position: relative;
+    display: flex; flex-direction: column; gap: 0;
+    height: 100%;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    transition: all var(--transition);
+    overflow: hidden;
+  }
+  .sub-card-rich:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .card-check { position: absolute; top: 10px; right: 10px; z-index: 1; }
+  .card-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 18px 12px;
+  }
+  .card-icon-box {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .card-icon-emoji { font-size: 20px; }
+  .card-title-group {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .card-name {
+    font-size: 15px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-category {
+    font-size: 11px; color: var(--text-tertiary);
+  }
+  .card-info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; padding: 0 18px 14px;
+    flex: 1;
+    align-content: start;
+  }
+  .card-info-left {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .card-info-right {
+    display: flex; flex-direction: column; gap: 4px;
+    align-items: flex-end; text-align: right;
+  }
+  .card-price-row {
+    display: flex; align-items: baseline; gap: 2px;
+  }
+  .card-price {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 20px; font-weight: 700; color: var(--text-primary);
+  }
+  .card-cycle {
+    font-size: 13px; color: var(--text-tertiary); font-weight: 400;
+  }
+  .card-meta-item {
+    font-size: 11px; color: var(--text-secondary); line-height: 1.5;
+  }
+  .card-meta-label {
+    color: var(--text-tertiary); margin-right: 2px;
+  }
+  .card-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 10px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .card-status-seg {
+    display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .seg-btn-sm {
+    padding: 4px 10px; font-size: 11px; font-weight: 500;
+    color: var(--text-tertiary); background: transparent;
+    border: none; border-right: 1px solid var(--border);
+    cursor: pointer; transition: all var(--transition);
+    white-space: nowrap;
+  }
+  .seg-btn-sm:last-child { border-right: none; }
+  .seg-btn-sm:hover { color: var(--text-primary); background: var(--hover); }
+  .seg-btn-sm.seg-active { font-weight: 600; }
+  .seg-btn-sm.seg-active.seg-active { color: var(--primary); background: var(--primary-tint); }
+  .seg-btn-sm.seg-paused { color: var(--warning); background: rgba(245, 158, 11, 0.08); }
+  .seg-btn-sm.seg-cancelled { color: var(--text-tertiary); background: var(--hover); }
+  .card-action-btns {
+    display: flex; gap: 4px;
+  }
+  .card-action-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px;
+    border-radius: var(--radius-sm); border: none;
+    color: var(--text-tertiary); background: transparent;
+    cursor: pointer; transition: all var(--transition);
+  }
+  .card-action-btn:hover { color: var(--primary); background: var(--primary-tint); }
+  .card-action-danger:hover { color: var(--error); background: rgba(237, 63, 63, 0.08); }
   .sub-wrapper { display: flex; flex-direction: column; }
 
   .sub-card {
@@ -995,7 +1203,8 @@
 
   .sub-row-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .sub-name-group { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
-  .sub-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .sub-name { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sub-top-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 
   .status-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--radius); flex-shrink: 0; }
@@ -1016,11 +1225,11 @@
   }
   .sub-price {
     font-family: 'DM Sans', sans-serif;
-    font-size: 18px; font-weight: 700;
-    color: var(--text-primary);
+    font-size: 15px; font-weight: 600;
+    color: var(--text-secondary);
   }
   .sub-cycle {
-    font-size: 13px; color: var(--text-tertiary); font-weight: 400;
+    font-size: 12px; color: var(--text-tertiary); font-weight: 400;
   }
 
   /* Detail footer: edit/delete buttons */
@@ -1324,7 +1533,10 @@
     .status-pills { display: none; }
     .toolbar { margin-bottom: 12px; }
     .view-toggle { display: none; }
-    .sub-list.grid-view {
+    .sub-list.compact-view {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .sub-list.card-view {
       display: flex; flex-direction: column; gap: 8px;
     }
     .mobile-filter-row {
@@ -1351,12 +1563,19 @@
     .sort-label { display: none; }
     .sort-trigger { gap: 4px; padding: 8px 10px; }
 
-    .sub-row-top { flex-wrap: wrap; gap: 6px; }
-    .sub-name-group { flex: 1 1 100%; min-width: 0; }
-    .sub-name { font-size: 14px; }
-    .sub-top-right { flex: 1 1 100%; justify-content: flex-end; gap: 8px; }
-    .sub-price { font-size: 16px; }
-    .renewal-badge { font-size: 11px; padding: 2px 8px; white-space: nowrap; }
+    .sub-row-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 4px 8px;
+      align-items: center;
+    }
+    .sub-name-group, .sub-top-right { display: contents; }
+    .sub-name { grid-row: 1; grid-column: 1; font-size: 15px; }
+    .sub-badges { grid-row: 2; grid-column: 1; }
+    .sub-price-group { grid-row: 1; grid-column: 2; justify-self: end; }
+    .sub-price { font-size: 14px; }
+    .renewal-badge { grid-row: 2; grid-column: 2; justify-self: end; font-size: 11px; padding: 2px 8px; white-space: nowrap; }
     .status-badge { white-space: nowrap; }
 
     /* Batch bar: wrap buttons to avoid overflow */

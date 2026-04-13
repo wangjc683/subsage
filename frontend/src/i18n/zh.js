@@ -121,6 +121,8 @@ export default {
   'subs.renews_today': '今天续费',
   'subs.total_monthly': '月均合计',
   'subs.total_yearly': '年均合计',
+  'subs.page_summary': '{count} 个订阅 · 每月约 {amount}',
+  'subs.page_summary_empty': '暂无订阅',
   'subs.reminder_days': '提前 {days} 天提醒',
   'subs.created_at': '创建时间',
   'subs.more': '更多',

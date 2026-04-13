@@ -174,11 +174,13 @@
 
         <div class="form-section">
           <div class="form-section-label">{$t('subs.section_billing')}</div>
-          <div class="form-row">
+          <div class="form-row form-row-inline">
             <div class="form-group form-price"><label for="field-price">{$t('subs.price')} *</label><input id="field-price" type="number" step="0.01" bind:value={form.price} placeholder="0.00" /></div>
             <div class="form-group form-auto"><label for="field-currency">{$t('subs.currency')}</label><select id="field-currency" bind:value={form.currency}>{#each ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'HKD', 'TWD', 'KRW'] as cur}<option value={cur}>{cur}</option>{/each}</select></div>
             <div class="form-group form-auto"><label for="field-cycle">{$t('subs.cycle')}</label><select id="field-cycle" bind:value={form.cycle} on:change={handleCycleChangeForRenewal}>{#each cycleIds as cid}<option value={cid}>{$t(`cycle.${cid}`)}</option>{/each}</select></div>
-            <div class="form-group form-price"><label for="field-orig-price">{$t('subs.original_price')}</label><input id="field-orig-price" type="number" step="0.01" bind:value={form.original_price} placeholder={$t('subs.original_price_placeholder')} /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1"><label for="field-orig-price">{$t('subs.original_price')}</label><input id="field-orig-price" type="number" step="0.01" bind:value={form.original_price} placeholder={$t('subs.original_price_placeholder')} /></div>
           </div>
           {#if form.original_price}
             <div class="form-group"><label for="field-discount">{$t('subs.discount_note')}</label><input id="field-discount" type="text" bind:value={form.discount_note} placeholder={$t('subs.discount_note_placeholder')} /></div>
@@ -187,7 +189,7 @@
 
         <div class="form-section">
           <div class="form-section-label">{$t('subs.section_renewal')}</div>
-          <div class="form-row">
+          <div class="form-row form-row-inline">
             <div class="form-group flex-1">
               <span class="field-label">{$t('subs.status')}</span>
               <div class="seg-control" role="radiogroup" aria-label="Status">
@@ -214,7 +216,7 @@
           <div class="form-row">
             <div class="form-group flex-1"><label for="field-payment">{$t('subs.payment_method')}</label><input id="field-payment" type="text" bind:value={form.payment_method} placeholder={$t('subs.payment_method_placeholder')} /></div>
           </div>
-          <div class="form-row">
+          <div class="form-row form-row-inline">
             <div class="form-group flex-1"><label for="field-start-date">{$t('subs.start_date')}</label><input id="field-start-date" type="date" lang={dateLang} bind:value={form.start_date} on:change={handleStartDateChange} /></div>
             <div class="form-group flex-1"><label for="field-next-renewal">{$t('subs.next_renewal')}</label><input id="field-next-renewal" type="date" lang={dateLang} bind:value={form.next_renewal} on:change={handleRenewalManualEdit} /></div>
           </div>
@@ -416,6 +418,26 @@
 
     /* Make selects full width */
     .form-group select { width: 100%; }
+
+    /* Inline rows: keep items side-by-side on mobile */
+    .form-row-inline {
+      flex-wrap: nowrap;
+    }
+    .form-row-inline > .form-auto {
+      flex: 0 0 auto;
+    }
+    .form-row-inline > .form-price {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .form-row-inline > .flex-1 {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .form-row-inline .seg-btn {
+      padding: 8px 8px;
+      font-size: 13px;
+    }
   }
 
   /* Toggle Switch */
@@ -441,4 +463,18 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   }
   .toggle-switch.on .toggle-knob { transform: translateX(20px); }
+
+  /* Mobile: larger toggle for touch */
+  @media (max-width: 768px) {
+    .toggle-switch {
+      width: 51px; height: 31px;
+      border-radius: 16px;
+    }
+    .toggle-knob {
+      width: 27px; height: 27px;
+    }
+    .toggle-switch.on .toggle-knob {
+      transform: translateX(20px);
+    }
+  }
 </style>

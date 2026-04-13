@@ -121,6 +121,8 @@ export default {
   'subs.renews_today': 'Renews today',
   'subs.total_monthly': 'Total Monthly',
   'subs.total_yearly': 'Total Yearly',
+  'subs.page_summary': '{count} subscriptions · ~{amount}/mo',
+  'subs.page_summary_empty': 'No subscriptions',
   'subs.reminder_days': '{days}d reminder',
   'subs.created_at': 'Created',
   'subs.more': 'More',
