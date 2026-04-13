@@ -1303,6 +1303,7 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     transition: all var(--transition); cursor: pointer;
     text-align: left; width: 100%; color: inherit; position: relative;
+    overflow: hidden;
   }
   .sub-card:hover {
     box-shadow: var(--shadow-md);
@@ -1334,7 +1335,7 @@
   .sub-name-group { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
   .sub-badges { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .sub-name { font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sub-top-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .sub-top-right { display: flex; align-items: center; gap: 10px; flex-shrink: 1; min-width: 0; overflow: hidden; }
 
   .status-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--radius); flex-shrink: 0; }
   .status-active { background: rgba(68, 185, 49, 0.12); color: var(--success); }
@@ -1389,6 +1390,7 @@
     font-size: 12px; font-weight: 500; padding: 3px 10px;
     border-radius: var(--radius-xl); white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    overflow: hidden; text-overflow: ellipsis; flex-shrink: 1;
   }
   .renewal-badge-overdue { background: rgba(237, 63, 63, 0.12); color: var(--error); }
   .renewal-badge-overdue-mild { background: rgba(245, 130, 32, 0.12); color: #E07020; }
@@ -1658,6 +1660,58 @@
   }
   .animate-sheet-up {
     animation: sheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  }
+
+  /* ===== Grid Degradation (accounts for expanded sidebar ~220px) ===== */
+  @media (max-width: 1440px) {
+    /* Compact view: single column — sidebar eats 220px, content ≤1060px */
+    .sub-list.compact-view {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    /* Card view: 2 columns instead of 3 */
+    .sub-list.card-view {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+  }
+
+  /* ===== Small Desktop Responsive (toolbar/search/batch reflow) ===== */
+  @media (max-width: 1024px) {
+    /* Toolbar: wrap to two rows */
+    .toolbar {
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .status-pills {
+      width: 100%;
+      order: -1;
+    }
+    .filters {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Search box: adaptive width instead of fixed 240px */
+    .search-box {
+      width: auto;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    /* Batch bar: allow wrapping */
+    .batch-bar {
+      flex-wrap: wrap;
+    }
+    .batch-actions {
+      flex-wrap: wrap;
+    }
+
+    /* Category pills: ensure smooth scroll hint */
+    .pill-filters {
+      position: relative;
+    }
   }
 
   @media (max-width: 768px) {

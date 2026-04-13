@@ -199,6 +199,7 @@ See the full changelog at [GitHub Releases](https://github.com/wangjc683/subsage
 | v0.3.0 | Calendar heatmap visualization, cross-page category drill-down, comprehensive UI/UX audit (11 fixes: hover-reveal actions, unified pill styles, design token migration, trend line polish) |
 | v0.4.0 | Auto-renewal tracking, Agent page overhaul (secure token reveal, 3-card layout), subscription card layout redesign, unified renewal badge system, mobile responsiveness fixes |
 | v0.4.1 | New card view with dashboard-style info cards, compact/card view toggle, mobile form optimization, touch target improvements |
+| v0.4.3 | Subscription page responsive design fix for small desktop viewports (grid degradation breakpoints, toolbar reflow, overflow protection) |
 | v0.4.2 | Mobile agenda view for calendar, multi-currency conversion fix (Calendar + SubList), PWA icon optimization (high-res PNG), 44px touch targets audit, unified detail grid layout |
 | v0.2.3 | Delete bug fix, full i18n audit (zero hardcoded strings), page transitions, calendar category colors, graduated overdue badges, keyboard shortcuts, dark mode polish |
 | v0.2.2 | List/grid view toggle, modal form redesign (segmented controls, styled selects), overview layout merge, dynamic daily cost hints, a11y cleanup |
