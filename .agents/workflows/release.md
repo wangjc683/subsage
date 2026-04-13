@@ -20,17 +20,13 @@ description: How to create a new release for SubSage
 - **Major** (x.0.0): breaking changes, major redesigns
 
 ### 2. Update version strings in codebase
-Replace all `vOLD` with `vNEW` in these files:
-- `frontend/src/i18n/en.js` — `nav.version`
-- `frontend/src/i18n/zh.js` — `nav.version`
-- `frontend/src/components/Sidebar.svelte` — version text in desktop sidebar
-- `frontend/src/pages/Settings.svelte` — about section
-- `frontend/src/pages/Login.svelte` — login page footer
+Replace `vOLD` with `vNEW` in these files:
+- `frontend/src/version.js` — **single source of truth** (imported by Sidebar, Settings, Login)
 - `docs/architecture.md` — current version line
 
 Quick command:
 ```bash
-cd frontend/src && sed -i '' 's/vOLD/vNEW/g' pages/Settings.svelte pages/Login.svelte i18n/zh.js i18n/en.js components/Sidebar.svelte
+cd frontend/src && sed -i '' 's/vOLD/vNEW/g' version.js
 sed -i '' 's/vOLD/vNEW/' ../../docs/architecture.md
 ```
 
