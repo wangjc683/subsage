@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { subs, settings, categories, getCategoryIcon, getCategoryName, getCategoryColor, getCycleName, formatPrice, daysUntil, cycleIds, toasts } from '../stores/index.js';
   import { t } from '../i18n/index.js';
-  import { updateSub, deleteSub } from '../api/index.js';
+  import { updateSub, deleteSub, getExchangeRates } from '../api/index.js';
   import EditSubModal from '../components/EditSubModal.svelte';
 
   let filterCategory = '';
@@ -23,6 +23,27 @@
   let showCategorySheet = false;
   let viewMode = 'compact';
 
+  // Exchange rates for currency conversion
+  let rates = {};
+  $: baseCurrency = $settings?.base_currency || 'USD';
+
+  function toBase(price, currency) {
+    if (!currency || currency === baseCurrency) return price;
+    const direct = rates[currency + '_' + baseCurrency];
+    if (direct && typeof direct === 'number') return price * direct;
+    let fromUSD = 1.0;
+    let toUSD = 1.0;
+    if (currency !== 'USD') {
+      const r = rates['USD_' + currency];
+      if (r && typeof r === 'number' && r > 0) fromUSD = 1.0 / r;
+    }
+    if (baseCurrency !== 'USD') {
+      const r = rates['USD_' + baseCurrency];
+      if (r && typeof r === 'number') toUSD = r;
+    }
+    return price * fromUSD * toUSD;
+  }
+
   // Load view mode preference from localStorage
   try { viewMode = localStorage.getItem('sage_view_mode') || 'compact'; } catch (_) {}
   function setViewMode(mode) {
@@ -37,6 +58,7 @@
   function handleMqlChange(e) { isMobile = e.matches; }
   if (mql) mql.addEventListener('change', handleMqlChange);
   $: effectiveViewMode = isMobile ? 'compact' : viewMode;
+  $: if (effectiveViewMode) expandedId = null;
 
   const sortOptions = [
     { value: '', key: 'subs.sort_default' },
@@ -86,6 +108,7 @@
     cancelled: ($subs || []).filter(s => s.status === 'cancelled').length,
   };
   $: monthlyTotal = (() => {
+    const _deps = [rates, baseCurrency]; // reactive dependencies
     const activeSubs = ($subs || []).filter(s => s.status === 'active');
     return activeSubs.reduce((sum, s) => {
       let monthly = s.price || 0;
@@ -96,14 +119,8 @@
         case 'yearly': monthly = s.price / 12; break;
         case 'lifetime': monthly = 0; break;
       }
-      return sum + monthly;
+      return sum + toBase(monthly, s.currency);
     }, 0);
-  })();
-  $: primaryCurrency = (() => {
-    const counts = {};
-    ($subs || []).filter(s => s.status === 'active').forEach(s => { counts[s.currency] = (counts[s.currency] || 0) + 1; });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    return sorted[0]?.[0] || $settings?.base_currency || 'USD';
   })();
   $: allSelected = filteredSubs.length > 0 && filteredSubs.every(s => selectedIds.has(s.id));
   $: selectedCount = selectedIds.size;
@@ -171,6 +188,9 @@
     }
     window.addEventListener('keydown', handleKeydown);
     window.addEventListener('click', handleClickOutside, true);
+    getExchangeRates().then(info => {
+      if (info?.rates) rates = info.rates;
+    }).catch(() => {});
   });
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeydown);
@@ -343,7 +363,7 @@
   <div class="page-header">
     <div class="page-header-left">
       <h1>{$t('subs.title')}</h1>
-      <span class="page-subtitle">{totalSubs > 0 ? $t('subs.page_summary', { count: totalSubs, amount: formatPrice(monthlyTotal, primaryCurrency) }) : $t('subs.page_summary_empty')}</span>
+      <span class="page-subtitle">{totalSubs > 0 ? $t('subs.page_summary', { count: totalSubs, amount: formatPrice(monthlyTotal, baseCurrency) }) : $t('subs.page_summary_empty')}</span>
     </div>
     <div class="header-actions">
       {#if !batchMode}
@@ -566,14 +586,29 @@
                 </div>
               </div>
               <div class="card-actions">
-                <div class="card-status-seg">
-                  {#each ['active', 'paused', 'cancelled'] as st}
-                    <button
-                      class="seg-btn-sm {sub.status === st ? 'seg-active seg-' + st : ''}"
-                      on:click|stopPropagation={() => quickSetStatus(sub, st)}
-                    >{statusLabel(st)}</button>
-                  {/each}
+                <div class="status-pill-wrap">
+                  <button class="status-pill {statusClass(sub.status)}" on:click|stopPropagation>
+                    {statusLabel(sub.status)}
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="status-dropdown">
+                    {#each ['active', 'paused', 'cancelled'] as st}
+                      <button
+                        class="status-dropdown-item {sub.status === st ? 'current' : ''}"
+                        on:click|stopPropagation={() => quickSetStatus(sub, st)}
+                      >
+                        <span class="status-dot {statusClass(st)}"></span>
+                        {statusLabel(st)}
+                      </button>
+                    {/each}
+                  </div>
                 </div>
+                <button class="card-auto-renew" on:click|stopPropagation={() => quickToggleAutoRenew(sub)}>
+                  <span class="card-meta-label">{$t('subs.auto_renew')}</span>
+                  <span class="card-toggle-mini" class:on={sub.auto_renew !== false}>
+                    <span class="card-toggle-thumb"></span>
+                  </span>
+                </button>
                 <div class="card-action-btns">
                   <button class="card-action-btn" on:click|stopPropagation={() => openEdit(sub)} title="{$t('subs.edit')}">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -631,23 +666,46 @@
 
           {#if isExpanded}
             <div class="sub-detail animate-fade-in">
-              <!-- Quick Actions (top for fast access) -->
-              <div class="quick-actions">
-                <div class="quick-action-row">
-                  <div class="quick-group">
-                    <span class="quick-label">{$t('subs.status')}</span>
-                    <div class="quick-status-seg">
-                      {#each ['active', 'paused', 'cancelled'] as st}
-                        <button
-                          class="seg-btn {sub.status === st ? 'seg-active seg-' + st : ''}"
-                          on:click|stopPropagation={() => quickSetStatus(sub, st)}
-                        >{statusLabel(st)}</button>
-                      {/each}
-                    </div>
+              <!-- Unified detail grid with interactive fields -->
+              <div class="detail-grid">
+                <!-- Interactive: Status -->
+                <div class="detail-item">
+                  <span class="detail-label">{$t('subs.status')}</span>
+                  <div class="detail-value">
+                    {#if isMobile}
+                      <div class="status-seg-inline">
+                        {#each ['active', 'paused', 'cancelled'] as st}
+                          <button
+                            class="seg-btn-inline {sub.status === st ? 'seg-active seg-' + st : ''}"
+                            on:click|stopPropagation={() => quickSetStatus(sub, st)}
+                          >{statusLabel(st)}</button>
+                        {/each}
+                      </div>
+                    {:else}
+                      <div class="status-pill-wrap">
+                        <button class="status-pill {statusClass(sub.status)}" on:click|stopPropagation>
+                          {statusLabel(sub.status)}
+                          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="status-dropdown">
+                          {#each ['active', 'paused', 'cancelled'] as st}
+                            <button
+                              class="status-dropdown-item {sub.status === st ? 'current' : ''}"
+                              on:click|stopPropagation={() => quickSetStatus(sub, st)}
+                            >
+                              <span class="status-dot {statusClass(st)}"></span>
+                              {statusLabel(st)}
+                            </button>
+                          {/each}
+                        </div>
+                      </div>
+                    {/if}
                   </div>
-                  <span class="quick-separator"></span>
-                  <div class="quick-group">
-                    <span class="quick-label">{$t('subs.auto_renew')}</span>
+                </div>
+                <!-- Interactive: Auto-renew -->
+                <div class="detail-item">
+                  <span class="detail-label">{$t('subs.auto_renew')}</span>
+                  <span class="detail-value">
                     <button
                       class="quick-toggle {sub.auto_renew !== false ? 'toggle-on' : 'toggle-off'}"
                       on:click|stopPropagation={() => quickToggleAutoRenew(sub)}
@@ -655,25 +713,23 @@
                       <span class="toggle-track"><span class="toggle-thumb"></span></span>
                       <span class="toggle-text">{sub.auto_renew !== false ? $t('subs.auto_renew_on') : $t('subs.auto_renew_off')}</span>
                     </button>
-                  </div>
+                  </span>
                 </div>
                 {#if sub.status === 'active' && sub.auto_renew === false && sub.next_renewal}
-                  <div class="quick-action-row">
-                    <span class="quick-label">{$t('subs.renewal_decision')}</span>
-                    <div class="quick-status-seg">
-                      <button class="seg-btn seg-renewed" on:click|stopPropagation={() => quickRenewed(sub)}>
-                        {$t('subs.quick_renewed_btn')}
-                      </button>
-                      <button class="seg-btn seg-wont" on:click|stopPropagation={() => quickWontRenew(sub)}>
-                        {$t('subs.quick_wont_renew_btn')}
-                      </button>
-                    </div>
+                  <div class="detail-item detail-item-full">
+                    <span class="detail-label">{$t('subs.renewal_decision')}</span>
+                    <span class="detail-value">
+                      <div class="quick-status-seg">
+                        <button class="seg-btn seg-renewed" on:click|stopPropagation={() => quickRenewed(sub)}>
+                          {$t('subs.quick_renewed_btn')}
+                        </button>
+                        <button class="seg-btn seg-wont" on:click|stopPropagation={() => quickWontRenew(sub)}>
+                          {$t('subs.quick_wont_renew_btn')}
+                        </button>
+                      </div>
+                    </span>
                   </div>
                 {/if}
-              </div>
-
-              <!-- Detail info -->
-              <div class="detail-grid">
                 {#if sub.url}
                   <div class="detail-item">
                     <span class="detail-label">{$t('subs.url')}</span>
@@ -1075,7 +1131,6 @@
     height: 100%;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     transition: all var(--transition);
-    overflow: hidden;
   }
   .sub-card-rich:hover {
     border-color: var(--primary);
@@ -1133,30 +1188,103 @@
   .card-meta-label {
     color: var(--text-tertiary); margin-right: 2px;
   }
+  /* Auto-renew Toggle */
+  .card-auto-renew {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer;
+    padding: 0; font-size: 11px;
+    transition: opacity var(--transition);
+    color: var(--text-tertiary);
+  }
+  .card-auto-renew:hover { opacity: 0.7; }
+  .card-toggle-mini {
+    display: inline-block;
+    position: relative;
+    width: 32px; height: 18px;
+    border-radius: 9px;
+    background: var(--border);
+    transition: background 0.2s;
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+  .card-toggle-mini.on {
+    background: var(--primary);
+  }
+  .card-toggle-thumb {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    display: block;
+  }
+  .card-toggle-mini.on .card-toggle-thumb {
+    transform: translateX(14px);
+  }
   .card-actions {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 8px; padding: 10px 18px;
+    display: flex; align-items: center;
+    gap: 10px; padding: 10px 18px;
     border-top: 1px solid var(--border);
   }
-  .card-status-seg {
-    display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm);
-    overflow: hidden;
+  /* Status Pill + Dropdown */
+  .status-pill-wrap {
+    position: relative;
   }
-  .seg-btn-sm {
-    padding: 4px 10px; font-size: 11px; font-weight: 500;
-    color: var(--text-tertiary); background: transparent;
-    border: none; border-right: 1px solid var(--border);
-    cursor: pointer; transition: all var(--transition);
-    white-space: nowrap;
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 12px; border-radius: 14px;
+    font-size: 12px; font-weight: 600;
+    border: none; cursor: pointer;
+    transition: all var(--transition);
   }
-  .seg-btn-sm:last-child { border-right: none; }
-  .seg-btn-sm:hover { color: var(--text-primary); background: var(--hover); }
-  .seg-btn-sm.seg-active { font-weight: 600; }
-  .seg-btn-sm.seg-active.seg-active { color: var(--primary); background: var(--primary-tint); }
-  .seg-btn-sm.seg-paused { color: var(--warning); background: rgba(245, 158, 11, 0.08); }
-  .seg-btn-sm.seg-cancelled { color: var(--text-tertiary); background: var(--hover); }
+  .status-pill svg {
+    opacity: 0.6; transition: transform 0.2s;
+  }
+  .status-pill:hover svg { opacity: 1; }
+  .status-pill.status-active {
+    color: var(--primary); background: var(--primary-tint);
+  }
+  .status-pill.status-paused {
+    color: var(--warning); background: rgba(245, 158, 11, 0.08);
+  }
+  .status-pill.status-cancelled {
+    color: var(--text-tertiary); background: var(--hover);
+  }
+  .status-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0;
+    min-width: 120px; padding: 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow-lg);
+    z-index: 100;
+    opacity: 0; visibility: hidden;
+    transform: translateY(-4px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  }
+  .status-pill-wrap:hover .status-dropdown {
+    opacity: 1; visibility: visible;
+    transform: translateY(0);
+  }
+  .status-pill-wrap:hover { z-index: 50; }
+  .status-dropdown-item {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 7px 10px;
+    font-size: 12px; color: var(--text-secondary);
+    background: none; border: none; border-radius: var(--radius-sm);
+    cursor: pointer; transition: background var(--transition);
+    text-align: left;
+  }
+  .status-dropdown-item:hover { background: var(--hover); color: var(--text-primary); }
+  .status-dropdown-item.current { font-weight: 600; color: var(--text-primary); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .status-dot.status-active { background: var(--primary); }
+  .status-dot.status-paused { background: var(--warning); }
+  .status-dot.status-cancelled { background: var(--text-tertiary); }
   .card-action-btns {
-    display: flex; gap: 4px;
+    display: flex; gap: 4px; margin-left: auto;
   }
   .card-action-btn {
     display: flex; align-items: center; justify-content: center;
@@ -1167,7 +1295,8 @@
   }
   .card-action-btn:hover { color: var(--primary); background: var(--primary-tint); }
   .card-action-danger:hover { color: var(--error); background: rgba(237, 63, 63, 0.08); }
-  .sub-wrapper { display: flex; flex-direction: column; }
+  .sub-wrapper { display: flex; flex-direction: column; position: relative; }
+  :global(.sub-wrapper:has(.status-pill-wrap:hover)) { z-index: 50 !important; }
 
   .sub-card {
     display: flex; align-items: center; gap: 16px; padding: 18px 20px;
@@ -1298,15 +1427,18 @@
   .quick-action-row {
     display: flex; align-items: center; justify-content: flex-end; gap: 12px;
     flex-wrap: wrap;
+    min-height: 28px;
   }
   .quick-separator {
     width: 1px; height: 20px; background: var(--border); flex-shrink: 0;
+    align-self: center;
   }
   .quick-group {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; gap: 8px;
   }
   .quick-label {
     font-size: 13px; color: var(--text-secondary); font-weight: 500; flex-shrink: 0;
+    line-height: 28px;
   }
 
   /* Status segmented control */
@@ -1328,7 +1460,7 @@
 
   /* Toggle switch */
   .quick-toggle {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 6px;
     background: transparent; border: none; cursor: pointer; padding: 0;
   }
   .toggle-track {
@@ -1343,7 +1475,7 @@
   .toggle-on .toggle-track { background: var(--primary); }
   .toggle-on .toggle-thumb { transform: translateX(16px); }
   .toggle-off .toggle-track { background: var(--border); }
-  .toggle-text { font-size: 13px; color: var(--text-secondary); }
+  .toggle-text { font-size: 13px; color: var(--text-secondary); line-height: 28px; }
 
   /* Decision buttons — reuse seg style */
   .quick-decision-row { margin-top: 2px; }
@@ -1398,8 +1530,9 @@
     background: var(--surface); border: 1px solid var(--border); border-top: none;
     border-radius: 0 0 var(--radius) var(--radius); padding: 18px 20px 18px 80px;
   }
-  .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
   .detail-item { display: flex; flex-direction: column; gap: 3px; }
+  .detail-item-full { grid-column: 1 / -1; }
   .detail-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
   .detail-value { font-size: 13px; color: var(--text-primary); word-break: break-all; }
   .detail-item a { font-size: 13px; color: var(--primary); word-break: break-all; text-decoration: none; }
@@ -1544,6 +1677,11 @@
       margin-bottom: 12px;
     }
 
+    /* Mobile filter buttons: 44px touch targets */
+    .category-chip { padding: 10px 14px; min-height: 44px; font-size: 14px; }
+    .pill-sm { padding: 10px 12px; min-height: 44px; font-size: 13px; }
+    .sheet-item { padding: 14px 16px; min-height: 48px; font-size: 15px; }
+
     /* Hide duplicate title (top bar already shows it) */
     .page-header h1 { display: none; }
 
@@ -1553,15 +1691,21 @@
       gap: 8px;
     }
     .header-actions { gap: 6px; }
-    .btn-batch { padding: 7px 10px; font-size: 13px; }
-    .btn-add { padding: 7px 12px; font-size: 13px; }
+    .btn-batch { padding: 10px 14px; font-size: 13px; min-height: 44px; }
+    .btn-add { padding: 10px 16px; font-size: 13px; min-height: 44px; }
 
     /* Filters: single row on mobile */
     .filters { flex-wrap: nowrap; }
     .search-box { flex: 1 1 0; min-width: 0; width: auto; }
+    .search-input { padding: 10px 36px; min-height: 44px; font-size: 15px; }
     .sort-dropdown { flex-shrink: 0; }
     .sort-label { display: none; }
-    .sort-trigger { gap: 4px; padding: 8px 10px; }
+    .sort-trigger { gap: 4px; padding: 10px 12px; min-height: 44px; }
+    .view-btn { width: 44px; height: 44px; }
+
+    /* Category & status filter pills */
+    .pill-item { padding: 10px 14px; min-height: 44px; }
+    .pill-status { padding: 10px 14px; min-height: 44px; }
 
     .sub-row-top {
       display: grid;
@@ -1578,18 +1722,32 @@
     .renewal-badge { grid-row: 2; grid-column: 2; justify-self: end; font-size: 11px; padding: 2px 8px; white-space: nowrap; }
     .status-badge { white-space: nowrap; }
 
-    /* Batch bar: wrap buttons to avoid overflow */
+    /* Batch bar: wrap buttons, enlarge touch targets */
     .batch-bar { flex-wrap: wrap; gap: 8px; }
     .batch-actions { flex-wrap: wrap; gap: 6px; }
-    .btn-batch-action { padding: 5px 10px; font-size: 11px; }
+    .btn-batch-action { padding: 10px 14px; font-size: 13px; min-height: 44px; }
+    .batch-checkbox { width: 22px; height: 22px; }
+
+    /* Edit icon: transparent 44px touch area, subtle icon */
+    .sub-end { width: 36px; min-height: 44px; }
+    .sub-edit-icon {
+      min-width: 36px; min-height: 44px;
+      background: transparent;
+    }
+    .sub-edit-icon:active { background: var(--hover); }
+    .sub-edit-icon svg { width: 18px; height: 18px; }
+
+    /* Detail footer buttons: 44px touch targets */
+    .btn-detail-edit { padding: 12px 18px; font-size: 14px; min-height: 44px; }
+    .btn-detail-delete { padding: 12px 18px; font-size: 14px; min-height: 44px; }
 
     /* Quick actions: stack groups on mobile */
     .quick-action-row { flex-wrap: wrap; gap: 10px; }
     .quick-separator { display: none; }
     .quick-group { flex: 1 1 100%; justify-content: space-between; }
 
-    /* Larger touch targets on mobile (44px min) */
-    .seg-btn { padding: 12px 16px; font-size: 13px; white-space: nowrap; }
+    /* Seg buttons: 44px touch targets */
+    .seg-btn { padding: 12px 16px; font-size: 13px; white-space: nowrap; min-height: 44px; }
     .quick-status-seg { border-radius: var(--radius); gap: 2px; }
     .seg-btn { border-right: none; }
 
@@ -1621,10 +1779,54 @@
     .sub-edit-icon { opacity: 1; pointer-events: auto; }
     .sub-chevron-icon { display: none; }
 
-    /* Detail expansion less indented on mobile */
+    /* Detail expansion on mobile */
     .sub-detail {
       padding: 14px 12px 14px 12px;
     }
+    .detail-grid {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    /* Inline status segment for mobile */
+    .status-seg-inline {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .seg-btn-inline {
+      flex: 1;
+      padding: 12px 8px;
+      font-size: 14px; font-weight: 500;
+      color: var(--text-tertiary);
+      background: transparent;
+      border: none;
+      border-right: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      white-space: nowrap;
+      min-height: 44px;
+    }
+    .seg-btn-inline:last-child { border-right: none; }
+    .seg-btn-inline.seg-active { font-weight: 600; }
+    .seg-btn-inline.seg-active.seg-active { color: var(--primary); background: var(--primary-tint); }
+    .seg-btn-inline.seg-paused { color: var(--warning); background: rgba(245, 158, 11, 0.08); }
+    .seg-btn-inline.seg-cancelled { color: var(--text-tertiary); background: var(--hover); }
+
+    /* Renewal decision mobile fix */
+    .quick-status-seg {
+      display: flex; border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      width: 100%;
+    }
+    .quick-status-seg .seg-btn {
+      flex: 1; text-align: center;
+      padding: 10px 8px; font-size: 13px;
+      border-right: 1px solid var(--border);
+    }
+    .quick-status-seg .seg-btn:last-child { border-right: none; }
 
     /* Sort menu full width on mobile */
     .sort-menu { min-width: 160px; }

@@ -1,6 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { subs, getCategoryIcon, getCategoryColor, getCategoryName, daysUntil, formatPrice, settings } from '../stores/index.js';
+  import { getExchangeRates } from '../api/index.js';
   import { t, locale } from '../i18n/index.js';
   import EditSubModal from '../components/EditSubModal.svelte';
 
@@ -15,7 +16,32 @@
   let showEditor = false;
   let editingSub = null;
 
+  // Exchange rates for currency conversion
+  let rates = {};
+
   settings.fetch();
+
+  // Convert price from source currency to base currency
+  // Mirrors backend convertRate logic: direct rate → via USD fallback
+  function toBase(price, currency) {
+    const base = baseCurrency;
+    if (!currency || currency === base) return price;
+    // Direct rate
+    const direct = rates[currency + '_' + base];
+    if (direct && typeof direct === 'number') return price * direct;
+    // Via USD
+    let fromUSD = 1.0;
+    let toUSD = 1.0;
+    if (currency !== 'USD') {
+      const r = rates['USD_' + currency];
+      if (r && typeof r === 'number' && r > 0) fromUSD = 1.0 / r;
+    }
+    if (base !== 'USD') {
+      const r = rates['USD_' + base];
+      if (r && typeof r === 'number') toUSD = r;
+    }
+    return price * fromUSD * toUSD;
+  }
 
   // Sunday-first weekday headers
   $: weekdays = (() => {
@@ -51,19 +77,23 @@
     return d.getFullYear() === year && d.getMonth() === month;
   });
   $: monthlyTotal = currentMonthSubs.length;
-  $: monthlyAmount = currentMonthSubs
-    .filter(s => s.auto_renew !== false || daysUntil(s.next_renewal) === null || daysUntil(s.next_renewal) >= 0)
-    .reduce((s, sub) => s + sub.price, 0);
   $: baseCurrency = $settings?.base_currency || 'USD';
+  $: monthlyAmount = (() => {
+    const _deps = [rates, baseCurrency]; // reactive dependencies
+    return currentMonthSubs
+      .filter(s => s.auto_renew !== false || daysUntil(s.next_renewal) === null || daysUntil(s.next_renewal) >= 0)
+      .reduce((s, sub) => s + toBase(sub.price, sub.currency), 0);
+  })();
 
   // Max daily spending in current month (for heatmap intensity)
   // NOTE: Must directly reference subsByKey here so Svelte tracks it as a dependency
   $: maxDayAmount = (() => {
     const lookup = subsByKey; // explicit dependency for Svelte reactivity
+    const _r = rates; // recalc when rates change
     let max = 0;
     for (let d = 1; d <= daysInMonth; d++) {
       const subs = getSubsForDate(year, month, d, lookup);
-      const total = subs.reduce((s, sub) => s + sub.price, 0);
+      const total = subs.reduce((s, sub) => s + toBase(sub.price, sub.currency), 0);
       if (total > max) max = total;
     }
     return max;
@@ -79,7 +109,7 @@
     });
     return {
       count: prevSubs.length,
-      amount: prevSubs.reduce((s, sub) => s + sub.price, 0),
+      amount: prevSubs.reduce((s, sub) => s + toBase(sub.price, sub.currency), 0),
     };
   })();
 
@@ -142,7 +172,7 @@
 
   // Calculate total for a day's subs
   function dayTotal(subsArr) {
-    return subsArr.reduce((sum, s) => sum + s.price, 0);
+    return subsArr.reduce((sum, s) => sum + toBase(s.price, s.currency), 0);
   }
 
   // Heatmap intensity: single-hue continuous gradient
@@ -274,14 +304,14 @@
         const d = new Date(s.next_renewal);
         return d.getFullYear() === year && d.getMonth() === m;
       });
-      const amount = monthSubs.reduce((s, sub) => s + sub.price, 0);
+      const amount = monthSubs.reduce((s, sub) => s + toBase(sub.price, sub.currency), 0);
       if (amount > yearMax) yearMax = amount;
 
       // Group by category for mini breakdown
       const catMap = {};
       monthSubs.forEach(s => {
         if (!catMap[s.category]) catMap[s.category] = { amount: 0, count: 0 };
-        catMap[s.category].amount += s.price;
+        catMap[s.category].amount += toBase(s.price, s.currency);
         catMap[s.category].count++;
       });
       const categories = Object.entries(catMap)
@@ -343,6 +373,9 @@
 
   onMount(() => {
     subs.fetch();
+    getExchangeRates().then(info => {
+      if (info?.rates) rates = info.rates;
+    }).catch(() => {});
     window.addEventListener('keydown', handleKeydown);
   });
 
@@ -610,6 +643,39 @@
             {/each}
           </div>
         {/if}
+      {/if}
+
+      <!-- Mobile Agenda: show when no day selected -->
+      {#if mobileSelectedDay === null && daysWithSubs.length > 0}
+        <div class="mobile-agenda animate-fade-in">
+          <div class="agenda-title">{$t('calendar.month_agenda')}</div>
+          {#each daysWithSubs as { day, subs: daySubs }}
+            {@const dateObj = new Date(year, month, day)}
+            {@const isToday = isCurrentMonth && day === todayDate}
+            {@const isPast = isCurrentMonth && day < todayDate}
+            <div class="agenda-day-group" class:agenda-past={isPast && !isToday}>
+              <div class="agenda-date-row">
+                <div class="agenda-date">
+                  {#if isToday}
+                    <span class="agenda-today-dot"></span>
+                  {/if}
+                  <span class="agenda-day-num" class:today={isToday}>{day}</span>
+                  <span class="agenda-weekday">{dateObj.toLocaleDateString($locale === 'zh' ? 'zh-CN' : 'en-US', { weekday: 'short' })}</span>
+                </div>
+                <span class="agenda-day-total tabular-nums">{formatPrice(dayTotal(daySubs), baseCurrency)}</span>
+              </div>
+              {#each daySubs as sub}
+                {@const cc = getCategoryColor(sub.category)}
+                <button class="agenda-item" on:click={() => openEditSub(sub)}>
+                  <span class="agenda-item-bar" style="background: {cc.text}"></span>
+                  <span class="agenda-item-icon">{getCategoryIcon(sub.category)}</span>
+                  <span class="agenda-item-name">{sub.name}</span>
+                  <span class="agenda-item-price tabular-nums">{formatPrice(sub.price, sub.currency)}</span>
+                </button>
+              {/each}
+            </div>
+          {/each}
+        </div>
       {/if}
 
       {#if monthlyTotal === 0}
@@ -1105,6 +1171,13 @@
     .hero-header h1 { font-size: 18px; }
     .calendar-nav { width: 100%; justify-content: center; }
 
+    /* 44px touch targets for nav buttons */
+    .nav-btn { min-width: 44px; min-height: 44px; padding: 10px 14px; }
+    .today-btn { font-size: 13px; padding: 10px 16px; }
+
+    /* View toggle: 44px touch targets */
+    .toggle-btn { padding: 10px 16px; font-size: 13px; min-height: 44px; }
+
     .hero-stats { padding: 8px 10px; gap: 4px; }
     .hero-stat-value { font-size: 13px; }
     .hero-stat-label { font-size: 11px; }
@@ -1155,20 +1228,93 @@
     }
     .mobile-detail .detail-header { margin-bottom: 8px; }
     .mobile-detail .detail-item {
-      padding: 8px 10px; margin-bottom: 4px;
+      padding: 12px 14px; margin-bottom: 4px;
       background: var(--card); border-radius: var(--radius-sm);
       display: flex; align-items: center; gap: 10px;
       border: none; width: 100%; text-align: left;
       font-family: inherit; color: inherit; cursor: pointer;
+      min-height: 48px;
     }
     .mobile-detail .detail-close {
-      padding: 4px 8px; font-size: 14px; color: var(--text-tertiary);
+      padding: 10px 12px; font-size: 16px; color: var(--text-tertiary);
       background: none; border: none; cursor: pointer;
+      min-width: 44px; min-height: 44px;
+      display: flex; align-items: center; justify-content: center;
     }
 
     .mobile-empty {
       text-align: center; padding: 40px 0;
       color: var(--text-secondary); font-size: 14px;
+    }
+
+    /* Mobile Agenda List */
+    .mobile-agenda {
+      margin-top: 12px;
+    }
+    .agenda-title {
+      font-size: 14px; font-weight: 600; color: var(--text-primary);
+      padding: 8px 4px; margin-bottom: 4px;
+    }
+    .agenda-day-group {
+      margin-bottom: 2px;
+    }
+    .agenda-day-group.agenda-past {
+      opacity: 0.5;
+    }
+    .agenda-date-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 4px 6px;
+    }
+    .agenda-date {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .agenda-today-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--primary); flex-shrink: 0;
+    }
+    .agenda-day-num {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 18px; font-weight: 700; color: var(--text-primary);
+      min-width: 28px;
+    }
+    .agenda-day-num.today {
+      color: var(--primary);
+    }
+    .agenda-weekday {
+      font-size: 13px; color: var(--text-tertiary); font-weight: 400;
+    }
+    .agenda-day-total {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    }
+    .agenda-item {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 12px 12px 12px 14px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); margin-bottom: 4px;
+      font-family: inherit; color: inherit;
+      cursor: pointer; transition: all var(--transition);
+      text-align: left; min-height: 48px;
+      position: relative; overflow: hidden;
+    }
+    .agenda-item:active { transform: scale(0.98); background: var(--hover); }
+    .agenda-item-bar {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; border-radius: 3px 0 0 3px;
+    }
+    .agenda-item-icon {
+      font-size: 16px; flex-shrink: 0; line-height: 1;
+    }
+    .agenda-item-name {
+      flex: 1; font-size: 14px; font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .agenda-item-badge {
+      font-size: 12px; flex-shrink: 0;
+    }
+    .agenda-item-badge.warn { color: var(--warning); }
+    .agenda-item-price {
+      font-size: 14px; font-weight: 600; color: var(--text-primary);
+      flex-shrink: 0;
     }
 
     /* Year view mobile */

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'sage-v3';
-const PRECACHE_URLS = ['/manifest.json', '/favicon.svg'];
+const CACHE_NAME = 'sage-v4';
+const PRECACHE_URLS = ['/manifest.json', '/favicon.svg', '/apple-touch-icon.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

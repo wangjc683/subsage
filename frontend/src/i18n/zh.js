@@ -169,6 +169,7 @@ export default {
   'calendar.weekdays': ['一', '二', '三', '四', '五', '六', '日'],
   'calendar.no_subs': '当日无订阅',
   'calendar.no_renewals_month': '本月没有续费 🎉',
+  'calendar.month_agenda': '本月续费计划',
   'calendar.view_month': '月',
   'calendar.view_year': '年',
   'calendar.year_title': '年度总览',

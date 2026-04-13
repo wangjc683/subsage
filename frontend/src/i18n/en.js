@@ -169,6 +169,7 @@ export default {
   'calendar.weekdays': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   'calendar.no_subs': 'No subscriptions on this day',
   'calendar.no_renewals_month': 'No renewals this month 🎉',
+  'calendar.month_agenda': 'Upcoming Renewals',
   'calendar.view_month': 'Month',
   'calendar.view_year': 'Year',
   'calendar.year_title': 'Year Overview',
