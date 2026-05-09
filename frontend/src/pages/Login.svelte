@@ -51,7 +51,11 @@
     if (data.token) {
       import('../stores/index.js').then(({ auth }) => {
         auth.login(data.token, data.username);
-        window.location.hash = '#/overview';
+        // history.replaceState helps Chrome's password manager detect the
+        // post-submit navigation (offer-to-save heuristic). replaceState
+        // doesn't fire hashchange, so dispatch it manually for our router.
+        history.replaceState(null, '', window.location.pathname + '#/overview');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
       });
     }
   }
@@ -125,11 +129,12 @@
         <p class="subtitle">{initialized ? $t('login.welcome_back_desc') : $t('login.create_account_desc')}</p>
       </div>
 
-      <form on:submit|preventDefault={handleSubmit}>
+      <form on:submit|preventDefault={handleSubmit} method="post" action="/api/auth/login">
         <div class="field">
           <label for="username">{$t('login.username')}</label>
           <input
             id="username"
+            name="username"
             type="text"
             bind:value={username}
             placeholder="Username"
@@ -142,6 +147,7 @@
           <label for="password">{$t('login.password')}</label>
           <input
             id="password"
+            name="password"
             type="password"
             bind:value={password}
             placeholder="Password"
@@ -155,6 +161,7 @@
             <label for="confirm">{$t('login.confirm_password')}</label>
             <input
               id="confirm"
+              name="confirm-password"
               type="password"
               bind:value={confirmPassword}
               placeholder="Confirm password"

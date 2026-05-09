@@ -196,6 +196,7 @@ See the full changelog at [GitHub Releases](https://github.com/wangjc683/subsage
 
 | Version | Highlights |
 |---------|-----------|
+| v0.4.5 | 90-day session lifetime (was 7); fix Chrome password autofill (form action/method, name attrs, history.replaceState navigation) |
 | v0.4.4 | Fix Overview state desync after editing subscriptions; subscription mutations now auto-refresh all derived views (stats, calendar) via store-level mechanism |
 | v0.3.0 | Calendar heatmap visualization, cross-page category drill-down, comprehensive UI/UX audit (11 fixes: hover-reveal actions, unified pill styles, design token migration, trend line polish) |
 | v0.4.0 | Auto-renewal tracking, Agent page overhaul (secure token reveal, 3-card layout), subscription card layout redesign, unified renewal badge system, mobile responsiveness fixes |

@@ -108,7 +108,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 func (h *AuthHandler) generateToken(username string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub": username,
-		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"exp": time.Now().Add(90 * 24 * time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
