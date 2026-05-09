@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { getOverview, getByCategory, getMonthlyTrend, getAgentStatus } from '../api/index.js';
   import { subs, formatPrice, getCategoryIcon, getCategoryName, getCategoryColor, daysUntil, settings } from '../stores/index.js';
   import { t, locale } from '../i18n/index.js';
@@ -118,12 +118,10 @@
 
   function onModalSaved() {
     showEditor = false;
-    loadData();
   }
 
   function onModalDeleted() {
     showEditor = false;
-    loadData();
   }
 
 
@@ -162,9 +160,19 @@
     loadData();
     subs.fetch();
     window.addEventListener('keydown', handleKeydown);
-  });
-  onDestroy(() => {
-    window.removeEventListener('keydown', handleKeydown);
+
+    // Stats are derived from subscriptions — refresh whenever any mutation fires.
+    // Skip the initial subscribe call (counter starts at 0) since loadData() already ran.
+    let isInitial = true;
+    const unsubChanged = subs.changed.subscribe(() => {
+      if (isInitial) { isInitial = false; return; }
+      loadData();
+    });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+      unsubChanged();
+    };
   });
 </script>
 

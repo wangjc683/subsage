@@ -356,12 +356,10 @@
 
   function onModalSaved() {
     showEditor = false;
-    subs.fetch();
   }
 
   function onModalDeleted() {
     showEditor = false;
-    subs.fetch();
   }
 
   function handleKeydown(e) {

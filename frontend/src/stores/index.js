@@ -114,26 +114,61 @@ export const theme = createThemeStore();
 export const currentPage = writable('overview');
 
 // --- Subscriptions Store ---
+// Mutation methods (create/save/remove) auto-refetch and bump `changed`,
+// so any view depending on subscriptions stays in sync without callers
+// remembering to refresh.
 function createSubsStore() {
   const { subscribe, set, update } = writable([]);
   const { subscribe: lSub, set: setLoading } = writable(false);
+  const { subscribe: changedSub, update: bumpChanged } = writable(0);
+  let lastParams = {};
+
+  async function fetch(params) {
+    if (params !== undefined) lastParams = params;
+    setLoading(true);
+    try {
+      const { getSubs } = await import('../api/index.js');
+      const data = await getSubs(lastParams);
+      set(data || []);
+    } catch (e) {
+      console.error('Failed to fetch subs:', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function notifyChange() {
+    bumpChanged(n => n + 1);
+  }
+
+  async function withMutation(apiCall) {
+    const result = await apiCall();
+    await fetch();
+    notifyChange();
+    return result;
+  }
 
   return {
     subscribe,
-    update,
+    update,                        // svelte writable: in-place local updates (e.g. quick actions)
     loading: { subscribe: lSub },
-    async fetch(params = {}) {
-      setLoading(true);
-      try {
-        const { getSubs } = await import('../api/index.js');
-        const data = await getSubs(params);
-        set(data || []);
-      } catch (e) {
-        console.error('Failed to fetch subs:', e);
-      } finally {
-        setLoading(false);
-      }
+    changed: { subscribe: changedSub }, // version counter — bumped on every mutation
+    fetch,
+    notifyChange,                  // for callers that mutate locally and need to signal stats refresh
+
+    async create(data) {
+      const { createSub } = await import('../api/index.js');
+      return withMutation(() => createSub(data));
     },
+    async save(id, data) {
+      const { updateSub } = await import('../api/index.js');
+      return withMutation(() => updateSub(id, data));
+    },
+    async remove(id) {
+      const { deleteSub } = await import('../api/index.js');
+      return withMutation(() => deleteSub(id));
+    },
+
     clear() {
       set([]);
     },

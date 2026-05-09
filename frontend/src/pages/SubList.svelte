@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { subs, settings, categories, getCategoryIcon, getCategoryName, getCategoryColor, getCycleName, formatPrice, daysUntil, cycleIds, toasts } from '../stores/index.js';
   import { t } from '../i18n/index.js';
-  import { updateSub, deleteSub, getExchangeRates } from '../api/index.js';
+  import { updateSub, getExchangeRates } from '../api/index.js';
   import EditSubModal from '../components/EditSubModal.svelte';
 
   let filterCategory = '';
@@ -232,12 +232,11 @@
         if (sub) {
           const patch = { ...sub, price: sub.price, remind_days: sub.remind_days, status };
           if (status === 'cancelled') patch.auto_renew = false;
-          await updateSub(id, patch); ok++;
+          await subs.save(id, patch); ok++;
         }
       } catch (_) {}
     }
     selectedIds.clear(); batchMode = false;
-    refresh();
     toasts.success($t('subs.batch_updated', { count: ok }));
   }
 
@@ -245,10 +244,9 @@
     if (!confirm($t('subs.batch_confirm_delete', { count: selectedCount }))) return;
     let ok = 0;
     for (const id of selectedIds) {
-      try { await deleteSub(id); ok++; } catch (_) {}
+      try { await subs.remove(id); ok++; } catch (_) {}
     }
     selectedIds.clear(); batchMode = false;
-    refresh();
     toasts.success($t('subs.batch_deleted', { count: ok }));
   }
 
@@ -264,12 +262,10 @@
 
   function onModalSaved() {
     showEditor = false;
-    refresh();
   }
 
   function onModalDeleted() {
     showEditor = false;
-    refresh();
   }
 
   function confirmDelete(sub) {
@@ -282,9 +278,8 @@
     const id = deleteConfirmSub.id;
     deleteConfirmSub = null;
     try {
-      await deleteSub(id);
+      await subs.remove(id);
       toasts.success($t('subs.delete') + ': ' + name);
-      refresh();
     } catch (e) {
       toasts.error(e.message || $t('common.delete_failed'));
     }
@@ -304,8 +299,10 @@
     if (patch.status === 'cancelled') payload.auto_renew = false;
     try {
       await updateSub(sub.id, payload);
-      // Update local store in-place (no re-sort, card stays in position)
+      // Update local store in-place — avoid full refetch so card stays in position
       subs.update(list => list.map(s => s.id === sub.id ? { ...s, ...payload } : s));
+      // Still notify so stats panels (e.g. Overview) refresh
+      subs.notifyChange();
       return true;
     } catch (e) {
       toasts.error(e.message || $t('common.save_failed'));

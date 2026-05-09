@@ -4,7 +4,6 @@
   import { t, locale } from '../i18n/index.js';
 
   $: dateLang = $locale === 'zh' ? 'zh-CN' : 'en';
-  import { createSub, updateSub, deleteSub } from '../api/index.js';
 
   export let show = false;
   export let sub = null; // null = create, object = edit
@@ -76,8 +75,8 @@
         auto_renew: form.auto_renew,
         remind_days: parseInt(form.remind_days) || 3,
       };
-      if (editing) await updateSub(sub.id, data);
-      else await createSub(data);
+      if (editing) await subs.save(sub.id, data);
+      else await subs.create(data);
       toasts.success(editing ? $t('common.updated') : $t('common.added'));
       close();
       dispatch('saved');
@@ -88,7 +87,7 @@
   async function handleDelete() {
     if (!editing) return;
     try {
-      await deleteSub(sub.id);
+      await subs.remove(sub.id);
       toasts.success($t('common.deleted'));
       close();
       dispatch('deleted');
