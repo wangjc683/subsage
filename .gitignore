@@ -20,6 +20,7 @@ backend/static/
 # IDE
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 
